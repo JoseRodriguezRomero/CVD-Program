@@ -1122,7 +1122,7 @@ void EurothermSerialClass::ManageReply()
     case STAT:
         for (int i = 0; i < 4; i++)
         {
-            if (value_int16 & i)
+            if (value_int16 & (1 << i))
             {
                 emit AlarmStatus(server_address, i, true);
             }
@@ -1149,7 +1149,7 @@ void EurothermSerialClass::ManageReply()
 
         for (int i = 4; i < 16; i++)
         {
-            if (value_int16 & i)
+            if (value_int16 & (1 << i))
             {
                 emit (*this.*foo[i-4])(server_address, true);
             }
