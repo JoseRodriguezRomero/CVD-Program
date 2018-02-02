@@ -84,6 +84,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&eurotherm_serial,SIGNAL(deviceConnected(QModbusDevice::State)),
             this,SLOT(initializeEurotherm(QModbusDevice::State)));
 
+    connect(&eurotherm_serial,SIGNAL(ErrorString(QString,bool)),
+            &eurotherm_status_string,SLOT(setStatusLabel(QString,bool)));
+
     eurotherm_serial.connectDevice();
     manual_control_page.setEurothermSerialClasss(&eurotherm_serial);
 
@@ -158,7 +161,6 @@ void MainWindow::initializeEurotherm(QModbusDevice::State state)
 
     switch (state) {
     case QModbusDevice::ConnectedState:
-        eurotherm_status_string.setStatusLabel("Eurotherm: CONNECTED",true);
         for (int i = 0; i < 3; i++)
         {
             eurotherm_serial.requestWriteActiveSetpoint(
@@ -166,10 +168,6 @@ void MainWindow::initializeEurotherm(QModbusDevice::State state)
             eurotherm_serial.requestReadTargetSetpoint(i+1);
             eurotherm_serial.requestReadPVInputValue(i+1);
         }
-        break;
-    default:
-        eurotherm_status_string.setStatusLabel(
-                    "Eurotherm: CONNECTION ERROR",false);
         break;
     }
 }

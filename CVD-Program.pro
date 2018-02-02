@@ -30,7 +30,8 @@ SOURCES += manualcontrolpage.cpp \
     main.cpp \
     serial/eurothermserialclass.cpp \
     serialsettingswindow.cpp \
-    logspage.cpp
+    logspage.cpp \
+    serial/pfeifferserialclass.cpp
 
 HEADERS  += manualcontrolpage.h \
     statusstring.h \
@@ -38,4 +39,5 @@ HEADERS  += manualcontrolpage.h \
     mainwindow.h \
     serial/eurothermserialclass.h \
     serialsettingswindow.h \
-    logspage.h
+    logspage.h \
+    serial/pfeifferserialclass.h

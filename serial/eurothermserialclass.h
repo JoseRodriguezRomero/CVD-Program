@@ -17,7 +17,7 @@ class EurothermSerialClass : public QObject
     Q_OBJECT
 private:
     EurothermSerialStruct *private_struct;
-    QTimer reconnect_timer;
+    QTimer event_timer;
 
 public:
     enum ControlActions {
@@ -73,7 +73,7 @@ public:
     QSerialPort::DataBits DataBits() const;
 
 signals:
-    void ReplyString(const QString &reply, bool status);
+    void ErrorString(const QString &error_string, bool status);
 
 public slots:
     void setSerialPortName(const QString port_name);

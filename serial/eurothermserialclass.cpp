@@ -291,7 +291,7 @@ void addFloatRequestToQueue(EurothermSerialClass *parent,
 
     ModbusRequestStruct new_request;
     new_request.server_address = server_address;
-    new_request.start_address = (start_address*2) | IEEE_REGION;
+    new_request.start_address = (start_address << 1) | IEEE_REGION;
     new_request.reg_type = reg_type;
     new_request.req_type = req_type;
     new_request.values.append(cast_val_high);
@@ -315,10 +315,10 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent) :
     stop_bits = QSerialPort::OneStop;
     data_bits = QSerialPort::Data8;
 
-    reconnect_timer.setInterval(1000);
-    reconnect_timer.setSingleShot(false);
+    event_timer.setInterval(1000);
+    event_timer.setSingleShot(false);
 
-    connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
+    connect(&event_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
 
     private_struct = new EurothermSerialStruct;
     modbus_client = nullptr;            // never forgetti mom's spaghetti
@@ -429,8 +429,8 @@ bool EurothermSerialClass::checkState()
 
     if (modbus_client == nullptr)
     {
-        emit ReplyString("Eurotherm: CONNECTION ERROR",false);
-        reconnect_timer.start();
+        emit ErrorString("Eurotherm: CONNECTION ERROR",false);
+        event_timer.start();
         return false;
     }
 
@@ -443,8 +443,8 @@ bool EurothermSerialClass::checkState()
     if (modbus_client->state() != QModbusDevice::ConnectedState)
     {
         disconnectDevice();
-        reconnect_timer.start();
-        emit ReplyString("Eurotherm: CONNECTION ERROR",false);
+        event_timer.start();
+        emit ErrorString("Eurotherm: CONNECTION ERROR",false);
         return false;
     }
 
@@ -479,20 +479,16 @@ bool EurothermSerialClass::checkState()
         break;
     }
 
-    emit ReplyString("Eurotherm: " + reply_string,status);
-
-    if (!status)
-    {
-        disconnectDevice();
-    }
+    emit ErrorString("Eurotherm: " + reply_string,status);
 
     if (status)
     {
-        reconnect_timer.start();
+        event_timer.stop();
     }
     else
     {
-        reconnect_timer.stop();
+        disconnectDevice();
+        event_timer.start();
     }
 
     return status;
@@ -748,7 +744,8 @@ void EurothermSerialClass::requestReadAlarmHysteresis(const int server_address,
                            HoldingRegister,ReadRequest);
 }
 
-void EurothermSerialClass::resquestReadInstrumentStatus(const int server_address)
+void EurothermSerialClass::resquestReadInstrumentStatus(
+        const int server_address)
 {
     addFloatRequestToQueue(this,private_struct,private_struct->process_queue,
                            server_address,STAT,InputRegister,ReadRequest);
