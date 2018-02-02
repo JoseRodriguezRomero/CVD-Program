@@ -17,6 +17,7 @@ class EurothermSerialClass : public QObject
     Q_OBJECT
 private:
     EurothermSerialStruct *private_struct;
+    QTimer reconnect_timer;
     QTimer event_timer;
 
 public:
@@ -63,8 +64,6 @@ private:
 public:
     explicit EurothermSerialClass(QObject *parent = 0);
     ~EurothermSerialClass();
-
-    void processModbusRequestQueue();
 
     QString SerialPortName() const;
     QSerialPort::BaudRate BaudRate() const;
@@ -132,6 +131,8 @@ public slots:
     void requestWriteSafeOutputValueforSensorBreak(const int server_address, const float safe);
     void requestWriteSetpointRateLimitValue(const int server_address, const float sp_rat);
     void requestWriteAlarmHysteresis(const int server_address, int alarm_num, const float a_hys);
+
+    void processModbusRequestQueue();
 
     void connectDevice();
     void disconnectDevice();

@@ -1,5 +1,10 @@
 #include "pfeifferserialclass.h"
 
+#define PFEIFFER_FLOW_CONTROL       QSerialPort::NoFlowControl
+#define PFEIFFER_STOP_BITS          QSerialPort::OneStop
+#define PFEIFFER_DATA_BITS          QSerialPort::Data8
+#define PFEIFFER_PARITY             QSerialPort::NoParity
+
 /* Mneumonic addresses */
 
 #define BAU             95
@@ -38,16 +43,117 @@
 
 /* Mneumonic addresses */
 
+struct PfeifferRequestStruct
+{
+    char mneumonic;
+    bool pending;
+    QVector<uchar> args;
+};
+
+struct PfeifferSerialStruct {
+    QVector<PfeifferRequestStruct> process_queue;
+};
+
 PfeifferSerialclass::PfeifferSerialclass()
 {
     serial_port = nullptr;
 
+    reconnect_timer.setInterval(1000);
+    reconnect_timer.setSingleShot(false);
+
     event_timer.setInterval(1000);
     event_timer.setSingleShot(false);
+
+    private_struct = new PfeifferSerialStruct;
 }
 
 PfeifferSerialclass::~PfeifferSerialclass()
 {
+    if (serial_port != nullptr)
+    {
+        while (serial_port->isOpen()) {
+            serial_port->close();
+        }
+
+        serial_port->deleteLater();
+    }
+
+    delete private_struct;
+}
+
+QString PfeifferSerialclass::PortName() const
+{
+    return port_name;
+}
+
+QSerialPort::FlowControl PfeifferSerialclass::FlowControl() const
+{
+    return PFEIFFER_FLOW_CONTROL;
+}
+
+QSerialPort::BaudRate PfeifferSerialclass::BaudRate() const
+{
+    return baud_rate;
+}
+
+QSerialPort::StopBits PfeifferSerialclass::StopBits() const
+{
+    return PFEIFFER_STOP_BITS;
+}
+
+QSerialPort::DataBits PfeifferSerialclass::DataBits() const
+{
+    return PFEIFFER_DATA_BITS;
+}
+
+QSerialPort::Parity PfeifferSerialclass::Parity() const
+{
+    return PFEIFFER_PARITY;
+}
+
+void PfeifferSerialclass::processSerialRequestQueue()
+{
+    if (!private_struct->process_queue.length())
+    {
+        event_timer.stop();
+        return;
+    }
+
+    if (serial_port == nullptr)
+    {
+        return;
+    }
+
+    if (!serial_port->isOpen())
+    {
+        checkState();
+        disconnectDevice();
+        event_timer.start();
+        return;
+    }
+
+    if (private_struct->process_queue.first().pending)
+    {
+        return;
+    }
+
+    QByteArray msg(private_struct->process_queue.first().mneumonic);
+    QVector<uchar> args = private_struct->process_queue.first().args;
+
+    for (int i = 0; i < args.length(); i++)
+    {
+        msg.append(args.at(i));
+    }
+
+    if (serial_port->waitForReadyRead())
+    {
+        serial_port->write(msg);
+
+        if (serial_port->waitForBytesWritten())
+        {
+            private_struct->process_queue[0].pending = true;
+        }
+    }
 }
 
 void PfeifferSerialclass::setPortName(const QString &port_name)
@@ -68,7 +174,8 @@ bool PfeifferSerialclass::checkState()
     if (serial_port == nullptr)
     {
         emit ErrorString("Pfeiffer: CONNECTION ERROR", false);
-        event_timer.start();
+        event_timer.stop();
+        reconnect_timer.start();
         return false;
     }
 
@@ -122,11 +229,13 @@ bool PfeifferSerialclass::checkState()
 
     if (status)
     {
-        event_timer.stop();
+        event_timer.start();
+        reconnect_timer.stop();
     }
     else
     {
-        event_timer.start();
+        event_timer.stop();
+        reconnect_timer.start();
         disconnectDevice();
     }
 
@@ -146,9 +255,11 @@ void PfeifferSerialclass::connectDevice()
 
     serial_port->setPortName(port_name);
     serial_port->setBaudRate(baud_rate);
-    serial_port->setStopBits(QSerialPort::OneStop);
-    serial_port->setDataBits(QSerialPort::Data8);
-    serial_port->setFlowControl(QSerialPort::NoFlowControl);
+    serial_port->setFlowControl(PFEIFFER_FLOW_CONTROL);
+    serial_port->setStopBits(PFEIFFER_STOP_BITS);
+    serial_port->setDataBits(PFEIFFER_DATA_BITS);
+    serial_port->setParity(PFEIFFER_PARITY);
+
     serial_port->setParity(QSerialPort::NoParity);
 
     if (serial_port->open(QIODevice::ReadWrite))
