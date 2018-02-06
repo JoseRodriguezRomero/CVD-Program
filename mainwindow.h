@@ -49,8 +49,6 @@ private slots:
 
     void onRecipePaused(bool recipe_paused);
     void onRecipeStarted(bool recipe_stopped);
-
-    void initializeEurotherm(QModbusDevice::State state);
 };
 
 #endif // MAINWINDOW_H

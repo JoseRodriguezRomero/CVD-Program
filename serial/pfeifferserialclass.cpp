@@ -62,7 +62,7 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent) :
     reconnect_timer.setInterval(1000);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(1000);
+    event_timer.setInterval(50);
     event_timer.setSingleShot(false);
 
     private_struct = new PfeifferSerialStruct;
@@ -138,7 +138,10 @@ void PfeifferSerialclass::processSerialRequestQueue()
         return;
     }
 
-    QByteArray msg(private_struct->process_queue.first().mneumonic);
+    char mneumonic = private_struct->process_queue.first().mneumonic;
+    QByteArray msg;
+    msg.clear();
+    msg.append(mneumonic);
     QVector<uchar> args = private_struct->process_queue.first().args;
 
     for (int i = 0; i < args.length(); i++)

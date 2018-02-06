@@ -265,6 +265,11 @@ void ManualControlPage::setTemperatureSetpoint(const int server_address,
         return;
     }
 
+    if (temp_setpoint->hasFocus())
+    {
+        return;
+    }
+
     temp_setpoint->setValue(setpoint);
 }
 
