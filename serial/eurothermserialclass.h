@@ -2,6 +2,7 @@
 #define EUROTHERMSERIALCLASS_H
 
 #include <QTimer>
+#include <QThread>
 #include <QObject>
 #include <QVariant>
 #include <QSerialPort>
@@ -53,6 +54,7 @@ public:
     };
 
 private:
+    QThread modbus_client_thread;
     QModbusRtuSerialMaster *modbus_client;
 
     QString serial_port_name;
@@ -183,6 +185,8 @@ signals:
     void AutotuneStatus(const int server_address, const bool status);                       // status == true -> active
 
     void deviceConnected(QModbusDevice::State);
+    void attemptReconnection();
+    void eventFinished();
 
 private slots:
     void ManageReply();

@@ -7,9 +7,8 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QStatusBar>
-#include <QTimer>
-
 #include <QThread>
+#include <QTimer>
 
 #include "manualcontrolpage.h"
 #include "recipespage.h"

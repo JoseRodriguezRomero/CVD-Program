@@ -315,15 +315,24 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent) :
     stop_bits = QSerialPort::OneStop;
     data_bits = QSerialPort::Data8;
 
-    reconnect_timer.setInterval(1000);
-    reconnect_timer.setSingleShot(false);
+    reconnect_timer.setInterval(5000);
+    reconnect_timer.setSingleShot(true);
 
-    event_timer.setInterval(100);
-    event_timer.setSingleShot(false);
+    event_timer.setInterval(1000);
+    event_timer.setSingleShot(true);
+
+    modbus_client_thread.start();
 
     connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
     connect(&event_timer,SIGNAL(timeout()),this,
             SLOT(processModbusRequestQueue()));
+
+    connect(this, SIGNAL(attemptReconnection()),&reconnect_timer,SLOT(start()));
+    connect(this,SIGNAL(eventFinished()),&event_timer,SLOT(start()));
+
+    connect(&event_timer,SIGNAL(timeout()),
+            this,SLOT(processModbusRequestQueue()));
+    connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
 
     private_struct = new EurothermSerialStruct;
     modbus_client = nullptr;            // never forgetti mom's spaghetti
@@ -337,6 +346,13 @@ EurothermSerialClass::~EurothermSerialClass()
                QModbusDevice::UnconnectedState) {
             modbus_client->disconnectDevice();
         }
+
+        modbus_client->deleteLater();
+    }
+
+    while (modbus_client_thread.isRunning())
+    {
+        modbus_client_thread.quit();
     }
 
     delete private_struct;
@@ -346,14 +362,23 @@ void EurothermSerialClass::connectDevice()
 {
     if (modbus_client == nullptr)
     {
-        modbus_client = new QModbusRtuSerialMaster(this);
+        modbus_client = new QModbusRtuSerialMaster(nullptr);
+        modbus_client->setTimeout(200);
+
+        modbus_client->moveToThread(&modbus_client_thread);
     }
-    else if (modbus_client->state() == QModbusDevice::ConnectedState)
+    else if (modbus_client->state() == QModbusDevice::ConnectedState ||
+             modbus_client->state() == QModbusDevice::ConnectingState)
     {
         return;
     }
 
-    modbus_client->setTimeout(50);
+    if (reconnect_timer.isActive())
+    {
+        return;
+    }
+
+    modbus_client->setTimeout(300);
     modbus_client->setNumberOfRetries(3);
 
     modbus_client->setConnectionParameter(
@@ -367,30 +392,23 @@ void EurothermSerialClass::connectDevice()
     modbus_client->setConnectionParameter(
                 QModbusDevice::SerialDataBitsParameter,data_bits);
 
-    connect(modbus_client,SIGNAL(errorOccurred(QModbusDevice::Error)),
-            this,SLOT(checkState()));
-
-    connect(&event_timer,SIGNAL(timeout()),
-            this,SLOT(processModbusRequestQueue()));
-    connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
-
     modbus_client->connectDevice();
-
-    while (modbus_client->state() == QModbusDevice::ConnectingState)
-    {
-    }
-
     private_struct->process_queue.clear();
 
     emit deviceConnected(modbus_client->state());
 
+    qDebug() << "here";
+
     if (modbus_client->state() == QModbusDevice::ConnectedState)
     {
-        reconnect_timer.stop();
+        connect(modbus_client,SIGNAL(errorOccurred(QModbusDevice::Error)),
+                this,SLOT(checkState()));
+
+        emit eventFinished();
     }
     else
     {
-        reconnect_timer.start();
+        emit attemptReconnection();
     }
 }
 
@@ -401,8 +419,8 @@ void EurothermSerialClass::disconnectDevice()
         return;
     }
 
-    while (modbus_client->state() !=
-           QModbusDevice::UnconnectedState) {
+    if  (modbus_client->state() != QModbusDevice::UnconnectedState)
+    {
         modbus_client->disconnectDevice();
     }
 
@@ -448,12 +466,6 @@ bool EurothermSerialClass::checkState()
     if (modbus_client == nullptr)
     {
         emit ErrorString("Eurotherm: CONNECTION ERROR",false);
-
-        if (!reconnect_timer.isActive())
-        {
-            reconnect_timer.start();
-        }
-
         return false;
     }
 
@@ -465,13 +477,6 @@ bool EurothermSerialClass::checkState()
 
     if (modbus_client->state() != QModbusDevice::ConnectedState)
     {
-        disconnectDevice();
-
-        if (!reconnect_timer.isActive())
-        {
-            reconnect_timer.start();
-        }
-
         emit ErrorString("Eurotherm: CONNECTION ERROR",false);
         return false;
     }
@@ -508,24 +513,6 @@ bool EurothermSerialClass::checkState()
     }
 
     emit ErrorString("Eurotherm: " + reply_string,status);
-
-    if (status)
-    {
-        reconnect_timer.stop();
-        event_timer.start();
-    }
-    else
-    {
-        disconnectDevice();
-
-        if (!reconnect_timer.isActive())
-        {
-            reconnect_timer.start();
-        }
-
-        event_timer.stop();
-    }
-
     return status;
 }
 
@@ -1503,17 +1490,8 @@ void EurothermSerialClass::ManageReply()
 
 void EurothermSerialClass::processModbusRequestQueue()
 {
-    event_timer.start();
-
     if (!checkState())
     {
-        disconnectDevice();
-
-        if (!reconnect_timer.isActive())
-        {
-            reconnect_timer.start();
-        }
-
         return;
     }
 
@@ -1524,12 +1502,12 @@ void EurothermSerialClass::processModbusRequestQueue()
 
     if (private_struct->process_queue.length() < 1)
     {
-        event_timer.stop();
         return;
     }
 
     if (private_struct->process_queue.at(0).pending)
     {
+        emit eventFinished();
         return;
     }
 
@@ -1555,7 +1533,6 @@ void EurothermSerialClass::processModbusRequestQueue()
         break;
     default:
         return;
-        break;
     }
 
     QModbusDataUnit data_unit;
@@ -1584,4 +1561,6 @@ void EurothermSerialClass::processModbusRequestQueue()
     {
         QObject::connect(reply,SIGNAL(finished()),this,SLOT(ManageReply()));
     }
+
+    emit eventFinished();
 }
