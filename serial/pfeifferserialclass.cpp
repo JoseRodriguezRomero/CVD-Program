@@ -54,7 +54,8 @@ struct PfeifferSerialStruct {
     QVector<PfeifferRequestStruct> process_queue;
 };
 
-PfeifferSerialclass::PfeifferSerialclass()
+PfeifferSerialclass::PfeifferSerialclass(QObject *parent) :
+    QObject(parent)
 {
     serial_port = nullptr;
 
@@ -226,6 +227,7 @@ bool PfeifferSerialclass::checkState()
     }
 
     emit ErrorString("Pfeiffer: " + reply_string, status);
+    emit deviceConnected(serial_port->error());
 
     if (status)
     {
@@ -265,11 +267,13 @@ void PfeifferSerialclass::connectDevice()
     if (serial_port->open(QIODevice::ReadWrite))
     {
         emit ErrorString("Pfeiffer: CONNECTED", true);
+        emit deviceConnected(serial_port->error());
     }
     {
         serial_port->deleteLater();
         serial_port = nullptr;
-        emit deviceConnected("Pfeiffer: CONNECTION ERROR", true);
+        emit ErrorString("Pfeiffer: CONNECTION ERROR", true);
+        emit deviceConnected(QSerialPort::NotOpenError);
     }
 }
 

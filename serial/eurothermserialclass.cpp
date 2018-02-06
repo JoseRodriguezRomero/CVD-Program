@@ -318,17 +318,12 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent) :
     reconnect_timer.setInterval(5000);
     reconnect_timer.setSingleShot(true);
 
-    event_timer.setInterval(1000);
+    event_timer.setInterval(50);
     event_timer.setSingleShot(true);
-
-    modbus_client_thread.start();
 
     connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
     connect(&event_timer,SIGNAL(timeout()),this,
             SLOT(processModbusRequestQueue()));
-
-    connect(this, SIGNAL(attemptReconnection()),&reconnect_timer,SLOT(start()));
-    connect(this,SIGNAL(eventFinished()),&event_timer,SLOT(start()));
 
     connect(&event_timer,SIGNAL(timeout()),
             this,SLOT(processModbusRequestQueue()));
@@ -350,11 +345,6 @@ EurothermSerialClass::~EurothermSerialClass()
         modbus_client->deleteLater();
     }
 
-    while (modbus_client_thread.isRunning())
-    {
-        modbus_client_thread.quit();
-    }
-
     delete private_struct;
 }
 
@@ -364,8 +354,6 @@ void EurothermSerialClass::connectDevice()
     {
         modbus_client = new QModbusRtuSerialMaster(nullptr);
         modbus_client->setTimeout(200);
-
-        modbus_client->moveToThread(&modbus_client_thread);
     }
     else if (modbus_client->state() == QModbusDevice::ConnectedState ||
              modbus_client->state() == QModbusDevice::ConnectingState)
@@ -397,18 +385,15 @@ void EurothermSerialClass::connectDevice()
 
     emit deviceConnected(modbus_client->state());
 
-    qDebug() << "here";
-
     if (modbus_client->state() == QModbusDevice::ConnectedState)
     {
-        connect(modbus_client,SIGNAL(errorOccurred(QModbusDevice::Error)),
-                this,SLOT(checkState()));
-
-        emit eventFinished();
+        event_timer.start();
+        reconnect_timer.stop();
     }
     else
     {
-        emit attemptReconnection();
+        event_timer.stop();
+        reconnect_timer.start();
     }
 }
 
@@ -424,13 +409,8 @@ void EurothermSerialClass::disconnectDevice()
         modbus_client->disconnectDevice();
     }
 
-    disconnect(modbus_client,SIGNAL(errorOccurred(QModbusDevice::Error)),
-            this,SLOT(checkState()));
-
     modbus_client->deleteLater();
     modbus_client = nullptr;
-
-    private_struct->process_queue.clear();
 }
 
 QString EurothermSerialClass::SerialPortName() const
@@ -481,7 +461,10 @@ bool EurothermSerialClass::checkState()
         return false;
     }
 
-    switch (modbus_client->error()) {
+    QModbusDevice::Error client_error = modbus_client->error();
+    QModbusDevice::State client_state = modbus_client->state();
+
+    switch (client_error) {
     case QModbusDevice::NoError :
         reply_string = "CONNECTED";
         status = true;
@@ -513,6 +496,8 @@ bool EurothermSerialClass::checkState()
     }
 
     emit ErrorString("Eurotherm: " + reply_string,status);
+    emit deviceConnected(client_state);
+
     return status;
 }
 
@@ -1490,13 +1475,29 @@ void EurothermSerialClass::ManageReply()
 
 void EurothermSerialClass::processModbusRequestQueue()
 {
-    if (!checkState())
+    if (modbus_client == nullptr)
     {
         return;
     }
-
-    if (modbus_client->state() == QModbusDevice::ConnectingState)
+    else
     {
+        event_timer.stop();
+        reconnect_timer.start();
+    }
+
+    if (modbus_client->error() != QModbusDevice::NoError)
+    {
+        disconnectDevice();
+        event_timer.stop();
+        reconnect_timer.start();
+        return;
+    }
+
+    if (!checkState())
+    {
+        disconnectDevice();
+        event_timer.stop();
+        reconnect_timer.start();
         return;
     }
 
@@ -1507,7 +1508,7 @@ void EurothermSerialClass::processModbusRequestQueue()
 
     if (private_struct->process_queue.at(0).pending)
     {
-        emit eventFinished();
+        event_timer.stop();
         return;
     }
 
@@ -1562,5 +1563,5 @@ void EurothermSerialClass::processModbusRequestQueue()
         QObject::connect(reply,SIGNAL(finished()),this,SLOT(ManageReply()));
     }
 
-    emit eventFinished();
+    event_timer.start();
 }

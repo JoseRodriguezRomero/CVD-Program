@@ -2,7 +2,6 @@
 #define EUROTHERMSERIALCLASS_H
 
 #include <QTimer>
-#include <QThread>
 #include <QObject>
 #include <QVariant>
 #include <QSerialPort>
@@ -54,7 +53,6 @@ public:
     };
 
 private:
-    QThread modbus_client_thread;
     QModbusRtuSerialMaster *modbus_client;
 
     QString serial_port_name;
@@ -72,9 +70,6 @@ public:
     QSerialPort::Parity Parity() const;
     QSerialPort::StopBits StopBits() const;
     QSerialPort::DataBits DataBits() const;
-
-signals:
-    void ErrorString(const QString &error_string, bool status);
 
 public slots:
     void setSerialPortName(const QString port_name);
@@ -184,9 +179,8 @@ signals:
     void RemoteSPFailStatus(const int server_address, const bool status);                   // status == true -> active
     void AutotuneStatus(const int server_address, const bool status);                       // status == true -> active
 
+    void ErrorString(const QString &error_string, bool status);
     void deviceConnected(QModbusDevice::State);
-    void attemptReconnection();
-    void eventFinished();
 
 private slots:
     void ManageReply();

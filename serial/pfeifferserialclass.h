@@ -14,15 +14,16 @@ class PfeifferSerialclass : public QObject
 private:
     PfeifferSerialStruct *private_struct;
 
+    QSerialPort *serial_port;
+
     QTimer event_timer;
     QTimer reconnect_timer;
-    QSerialPort *serial_port;
 
     QString port_name;
     QSerialPort::BaudRate baud_rate;
 
 public:
-    PfeifferSerialclass();
+    PfeifferSerialclass(QObject *parent);
     ~PfeifferSerialclass();
 
     QString PortName() const;
@@ -34,6 +35,7 @@ public:
 
 signals:
     void ErrorString(const QString &error_string, bool status);
+    void deviceConnected(QSerialPort::SerialPortError);
 
 public slots:
     void processSerialRequestQueue();

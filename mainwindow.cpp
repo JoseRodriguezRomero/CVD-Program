@@ -91,7 +91,7 @@ MainWindow::MainWindow(QWidget *parent) :
     manual_control_page.setEurothermSerialClasss(&eurotherm_serial);
 
     global_timer.setInterval(500);
-    global_timer.setSingleShot(false);
+    global_timer.setSingleShot(true);
     global_timer.start();
 }
 
@@ -119,10 +119,18 @@ void MainWindow::openSerialSettingsWindow()
 
 void MainWindow::UpdateWorkingSetPoints()
 {
+    if (global_timer.isActive())
+    {
+        return;
+    }
+
     for (int i = 0; i < 3; i++)
     {
         eurotherm_serial.requestReadPVInputValue(i+1);
+        eurotherm_serial.requestReadTargetSetpoint(i+1);
     }
+
+    global_timer.start();
 }
 
 void MainWindow::UpdateWorkingValues()
