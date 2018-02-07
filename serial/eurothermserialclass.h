@@ -18,6 +18,7 @@ class EurothermSerialClass : public QObject
 private:
     EurothermSerialStruct *private_struct;
     QTimer reconnect_timer;
+    QTimer event_timer;
 
 public:
     enum ControlActions {

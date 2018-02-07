@@ -3,6 +3,7 @@
 #include "eurothermserialclass.h"
 
 #define MAX_QUEUE_LEN           20
+#define MAX_FAILED_ATTEMPS      3
 
 #define IEEE_REGION             0x8000
 
@@ -220,6 +221,7 @@ struct ModbusRequestStruct {
 
 struct EurothermSerialStruct {
     QVector<ModbusRequestStruct> process_queue;
+    uint failed_attemps;
 };
 
 void add16BitRequestToQueue(EurothermSerialClass *parent,
@@ -318,9 +320,15 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent) :
     reconnect_timer.setInterval(1000);
     reconnect_timer.setSingleShot(true);
 
+    event_timer.setInterval(100);
+    event_timer.setSingleShot(true);
+
     connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
+    connect(&event_timer,SIGNAL(timeout()),
+            this,SLOT(processModbusRequestQueue()));
 
     private_struct = new EurothermSerialStruct;
+    private_struct->failed_attemps = 0;
     modbus_client = nullptr;            // never forgetti mom's spaghetti
 }
 
@@ -379,7 +387,7 @@ void EurothermSerialClass::connectDevice()
     if (modbus_client->state() == QModbusDevice::ConnectedState)
     {
         reconnect_timer.stop();
-        processModbusRequestQueue();
+        event_timer.start();
     }
     else
     {
@@ -959,7 +967,8 @@ void EurothermSerialClass::ManageReply()
     if (reply == nullptr)
     {
         private_struct->process_queue[0].pending = false;
-        processModbusRequestQueue();
+        private_struct->failed_attemps++;
+        event_timer.start();
         return;
     }
 
@@ -970,7 +979,8 @@ void EurothermSerialClass::ManageReply()
     {
         reply->deleteLater();
         private_struct->process_queue[0].pending = false;
-        processModbusRequestQueue();
+        private_struct->failed_attemps++;
+        event_timer.start();
         return;
     }
 
@@ -1458,13 +1468,21 @@ void EurothermSerialClass::ManageReply()
     }
 
     private_struct->process_queue[0].pending = false;
-    processModbusRequestQueue();
+    event_timer.start();
 }
 
 void EurothermSerialClass::processModbusRequestQueue()
 {
     if (reconnect_timer.isActive())
     {
+        return;
+    }
+
+    if (private_struct->failed_attemps >= MAX_FAILED_ATTEMPS)
+    {
+        disconnectDevice();
+        reconnect_timer.start();
+        private_struct->failed_attemps = 0;
         return;
     }
 
@@ -1529,7 +1547,14 @@ void EurothermSerialClass::processModbusRequestQueue()
 
     if (reply->isFinished())
     {
-        ManageReply();
+        if (reply->error() == QModbusDevice::NoError)
+        {
+            ManageReply();
+        }
+        else
+        {
+            event_timer.start();
+        }
     }
     else
     {

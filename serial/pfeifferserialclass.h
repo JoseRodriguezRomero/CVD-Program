@@ -16,6 +16,7 @@ private:
 
     QSerialPort *serial_port;
     QTimer reconnect_timer;
+    QTimer event_timer;
 
     QString port_name;
     QSerialPort::BaudRate baud_rate;
@@ -46,7 +47,8 @@ public slots:
     void connectDevice();
     void disconnectDevice();
 
-    //void
+private slots:
+    void ManageReply();
 };
 
 #endif // PFEIFFERSERIALCLASS_H

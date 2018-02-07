@@ -47,6 +47,7 @@ struct PfeifferRequestStruct
 {
     char mneumonic;
     bool pending;
+    bool enquiry;
     QVector<uchar> args;
 };
 
@@ -60,9 +61,16 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent) :
     serial_port = nullptr;
 
     reconnect_timer.setInterval(1000);
-    reconnect_timer.setSingleShot(false);
+    reconnect_timer.setSingleShot(true);
+
+    event_timer.setInterval(50);
+    event_timer.setSingleShot(true);
 
     private_struct = new PfeifferSerialStruct;
+
+    connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
+    connect(&event_timer,SIGNAL(timeout()),
+            this,SLOT(processSerialRequestQueue()));
 }
 
 PfeifferSerialclass::~PfeifferSerialclass()
@@ -111,6 +119,11 @@ QSerialPort::Parity PfeifferSerialclass::Parity() const
 
 void PfeifferSerialclass::processSerialRequestQueue()
 {
+    if (event_timer.isActive())
+    {
+        return;
+    }
+
     if (!private_struct->process_queue.length())
     {
         return;
@@ -154,7 +167,7 @@ void PfeifferSerialclass::processSerialRequestQueue()
         msg.append(args.at(i));
     }
 
-    if (serial_port->waitForReadyRead())
+    if (serial_port->isWritable())
     {
         serial_port->write(msg);
 
@@ -162,6 +175,10 @@ void PfeifferSerialclass::processSerialRequestQueue()
         {
             private_struct->process_queue[0].pending = true;
         }
+    }
+    else
+    {
+        event_timer.start();
     }
 }
 
@@ -243,6 +260,11 @@ bool PfeifferSerialclass::checkState()
 
 void PfeifferSerialclass::connectDevice()
 {
+    if (reconnect_timer.isActive())
+    {
+        return;
+    }
+
     if (serial_port == nullptr)
     {
         serial_port = new QSerialPort(this);
@@ -284,4 +306,17 @@ void PfeifferSerialclass::disconnectDevice()
     serial_port->close();
     serial_port->deleteLater();
     serial_port = nullptr;
+}
+
+void PfeifferSerialclass::ManageReply()
+{
+    QByteArray read_buffer = serial_port->readAll();
+    serial_port->flush();
+
+    if ((read_buffer.at(read_buffer.length()-2) != '\r') ||
+            (read_buffer.at(read_buffer.length()-1) != '\n'))
+    {
+        private_struct->process_queue[0].pending = false;
+        event_timer.start();
+    }
 }
