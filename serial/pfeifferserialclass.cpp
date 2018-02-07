@@ -5,56 +5,125 @@
 #define PFEIFFER_DATA_BITS          QSerialPort::Data8
 #define PFEIFFER_PARITY             QSerialPort::NoParity
 
-/* Mneumonic addresses */
+/* Mneumonics */
 
-#define BAU             95
-#define CAX             92
-#define CID             88
-#define DCB             89
-#define DCC             90
-#define DCD             88
-#define DCS             90
-#define DGS             93
-#define ERR             97
-#define FIL             92
-#define FSR             93
-#define LOC             91
-#define NAD             96
-#define OFC             93
-#define PNR             98
-#define PRX             88
-#define PUC             91
-#define RSX             94
-#define SAV             94
-#define SCX             87
-#define SEN             86
-#define SPX             90
-#define SPS             91
-#define TAI             100
-#define TAS             100
-#define TDI             98
-#define TEE             100
-#define TEP             99
-#define TID             101
-#define TKB             99
-#define TRA             99
-#define UNI             89
-#define WDT             101
+#define BAU             {'B','A','U'}
+#define CA_X_           {'C','A'}
+#define CID             {'C','I','D'}
+#define DCB             {'D','C','B'}
+#define DCC             {'D','C','C'}
+#define DCD             {'D','C','D'}
+#define DCS             {'D','C','S'}
+#define DGS             {'D','G','S'}
+#define ERR             {'E','R','R'}
+#define FIL             {'F','I','L'}
+#define FSR             {'F','S','R'}
+#define LOC             {'L','O','C'}
+#define NAD             {'N','A','D'}
+#define OFC             {'O','F','C'}
+#define PNR             {'P','N','R'}
+#define PR_X_           {'P','R'}
+#define PUC             {'P','U','C'}
+#define RSX             {'R','S','X'}
+#define SAV             {'S','A','V'}
+#define SCX             {'S','C','X'}
+#define SEN             {'S','E','N'}
+#define SP_X_           {'S','P'}
+#define SPS             {'S','P','S'}
+#define TAI             {'T','A','I'}
+#define TAS             {'T','A','S'}
+#define TDI             {'T','D','I'}
+#define TEE             {'T','E','E'}
+#define TEP             {'T','E','P'}
+#define TID             {'T','I','D'}
+#define TKB             {'T','K','B'}
+#define TRA             {'T','R','A'}
+#define UNI             {'U','N','I'}
+#define WDT             {'W','D','T'}
 
-/* Mneumonic addresses */
+/* Mneumonics */
+
+/* Mneumonic identifiers */
+
+#define BAU_ID          1
+#define CAX_ID          2
+#define CID_ID          3
+#define DCB_ID          4
+#define DCC_ID          5
+#define DCD_ID          6
+#define DCS_ID          7
+#define DGS_ID          8
+#define ERR_ID          9
+#define FIL_ID          10
+#define FSR_ID          11
+#define LOC_ID          12
+#define NAD_ID          13
+#define OFC_ID          14
+#define PNR_ID          15
+#define PRX_ID          16
+#define PUC_ID          17
+#define RSX_ID          18
+#define SAV_ID          19
+#define SCX_ID          20
+#define SEN_ID          21
+#define SPX_ID          22
+#define SPS_ID          23
+#define TAI_ID          24
+#define TAS_ID          25
+#define TDI_ID          26
+#define TEE_ID          27
+#define TEP_ID          28
+#define TID_ID          29
+#define TKB_ID          30
+#define TRA_ID          31
+#define UNI_ID          32
+#define WDT_ID          33
+
+/* Mneumonic identifiers */
 
 struct PfeifferRequestStruct
 {
-    char mneumonic;
+    int mneumonic_id;
+    QVector<char> mneumonic;
     bool pending;
     bool enquiry;
     bool enquirying;
-    QVector<uchar> args;
+    QVector<char> args;
 };
 
 struct PfeifferSerialStruct {
     QVector<PfeifferRequestStruct> process_queue;
 };
+
+void addReadRequestToQueue(PfeifferSerialStruct *parent,
+                           int mneumonic_id, QVector<char> mneumonic)
+{
+    PfeifferRequestStruct new_request;
+    new_request.mneumonic_id = mneumonic_id;
+    new_request.mneumonic = mneumonic;
+    new_request.pending = false;
+    new_request.enquiry = true;
+    new_request.enquirying = false;
+    new_request.args.clear();
+
+    parent->process_queue.append(new_request);
+}
+
+void addWriteRequestToQueue(PfeifferSerialStruct *parent,
+                            int mneumonic_id, QVector<char> mneumonic,
+                            const QVector<char> &args)
+{
+    PfeifferRequestStruct new_request;
+    new_request.mneumonic_id = mneumonic_id;
+    new_request.mneumonic = mneumonic;
+    new_request.pending = false;
+    new_request.enquiry = true;
+    new_request.enquirying = false;
+    new_request.args.clear();
+    new_request.args.append(args);
+
+    parent->process_queue.append(new_request);
+}
 
 PfeifferSerialclass::PfeifferSerialclass(QObject *parent) :
     QObject(parent)
@@ -196,6 +265,34 @@ void PfeifferSerialclass::setBaudRate(const QSerialPort::BaudRate baud_rate)
     this->baud_rate = baud_rate;
 }
 
+void PfeifferSerialclass::requestReadSensorStatuses()
+{
+    addReadRequestToQueue(private_struct,SEN_ID,SEN);
+}
+
+void PfeifferSerialclass::requestWriteSensorStatus(
+        int sensor_num, PfeifferSerialclass::SensorStatus status)
+{
+    QVector<char> statuses;
+    for (int i = 0; i < 6; i++)
+    {
+        statuses[i] = '0';
+    }
+
+    switch (status) {
+    case PfeifferSerialclass::On:
+        statuses[sensor_num-1] = '2';
+        break;
+    case PfeifferSerialclass::Off:
+        statuses[sensor_num-1] = '1';
+        break;
+    default:
+        return;
+    }
+
+    addWriteRequestToQueue(private_struct,SEN_ID,SEN,statuses);
+}
+
 bool PfeifferSerialclass::checkState()
 {
     QString reply_string;
@@ -328,84 +425,103 @@ void PfeifferSerialclass::ManageReply()
     {
         if (private_struct->process_queue.first().enquirying)
         {
-            switch (private_struct->process_queue.first().mneumonic) {
-            case BAU:
+            switch (private_struct->process_queue.first().mneumonic_id) {
+            case BAU_ID:
                 break;
-            case CAX:
+            case CAX_ID:
                 break;
-            case CID:
+            case CID_ID:
                 break;
-            case DCB:
+            case DCB_ID:
                 break;
-            case DCC:
+            case DCC_ID:
                 break;
-            case DCD:
+            case DCD_ID:
                 break;
-            case DCS:
+            case DCS_ID:
                 break;
-            case DGS:
+            case DGS_ID:
                 break;
-            case ERR:
+            case ERR_ID:
                 break;
-            case FIL:
+            case FIL_ID:
                 break;
-            case FSR:
+            case FSR_ID:
                 break;
-            case LOC:
+            case LOC_ID:
                 break;
-            case NAD:
+            case NAD_ID:
                 break;
-            case OFC:
+            case OFC_ID:
                 break;
-            case PNR:
+            case PNR_ID:
                 break;
-            case PRX:
+            case PRX_ID:
                 break;
-            case PUC:
+            case PUC_ID:
                 break;
-            case RSX:
+            case RSX_ID:
                 break;
-            case SAV:
+            case SAV_ID:
                 break;
-            case SCX:
+            case SCX_ID:
                 break;
-            case SEN:
+            case SEN_ID:
+                if (read_buffer.length() == 8)
+                {
+                    for (int i = 0; i < 6; i++)
+                    {
+                        if (read_buffer.at(i) == '2')
+                        {
+                            emit sensorStatus(i, On);
+                        }
+                        else if (read_buffer.at(i) == '1')
+                        {
+                            emit sensorStatus(i, Off);
+                        }
+                    }
+                }
                 break;
-            case SPX:
+            case SPX_ID:
                 break;
-            case SPS:
+            case SPS_ID:
                 break;
-            case TAI:
+            case TAI_ID:
                 break;
-            case TAS:
+            case TAS_ID:
                 break;
-            case TDI:
+            case TDI_ID:
                 break;
-            case TEE:
+            case TEE_ID:
                 break;
-            case TEP:
+            case TEP_ID:
                 break;
-            case TID:
+            case TID_ID:
                 break;
-            case TKB:
+            case TKB_ID:
                 break;
-            case TRA:
+            case TRA_ID:
                 break;
-            case UNI:
+            case UNI_ID:
                 break;
-            case WDT:
+            case WDT_iD:
                 break;
             }
+
+            private_struct->process_queue.remove(0);
+            private_struct->process_queue[0].pending = false;
+            event_timer.start();
         }
         else
         {
             if (serial_port->isWritable())
             {
+                serial_port->flush();
                 serial_port->write('\x05');
 
                 if (serial_port->waitForBytesWritten())
                 {
-                    private_struct->process_queue[0].pending = true;
+                    private_struct->process_queue[0].enquirying = true;
                 }
             }
             else

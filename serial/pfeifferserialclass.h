@@ -22,6 +22,12 @@ private:
     QSerialPort::BaudRate baud_rate;
 
 public:
+    enum SensorStatus {
+        On,
+        Off
+    };
+
+public:
     PfeifferSerialclass(QObject *parent);
     ~PfeifferSerialclass();
 
@@ -36,11 +42,17 @@ signals:
     void ErrorString(const QString &error_string, bool status);
     void deviceConnected(QSerialPort::SerialPortError);
 
+    void sensorStatus(int sensor_num, SensorStatus status);
+
 public slots:
     void processSerialRequestQueue();
 
     void setPortName(const QString &port_name);
     void setBaudRate(const QSerialPort::BaudRate baud_rate);
+
+    void requestReadSensorStatuses();
+
+    void requestWriteSensorStatus(int sensor_num, SensorStatus status);
 
     bool checkState();
 
