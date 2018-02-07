@@ -62,9 +62,6 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent) :
     reconnect_timer.setInterval(1000);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(50);
-    event_timer.setSingleShot(false);
-
     private_struct = new PfeifferSerialStruct;
 }
 
@@ -116,12 +113,15 @@ void PfeifferSerialclass::processSerialRequestQueue()
 {
     if (!private_struct->process_queue.length())
     {
-        event_timer.stop();
         return;
     }
 
     if (serial_port == nullptr)
     {
+        if (!reconnect_timer.isActive())
+        {
+            reconnect_timer.start();
+        }
         return;
     }
 
@@ -129,7 +129,12 @@ void PfeifferSerialclass::processSerialRequestQueue()
     {
         checkState();
         disconnectDevice();
-        event_timer.start();
+
+        if (!reconnect_timer.isActive())
+        {
+            reconnect_timer.start();
+        }
+
         return;
     }
 
@@ -178,7 +183,7 @@ bool PfeifferSerialclass::checkState()
     if (serial_port == nullptr)
     {
         emit ErrorString("Pfeiffer: CONNECTION ERROR", false);
-        event_timer.stop();
+        disconnectDevice();
         reconnect_timer.start();
         return false;
     }
@@ -199,15 +204,6 @@ bool PfeifferSerialclass::checkState()
         break;
     case QSerialPort::NotOpenError:
         reply_string = "NOT OPEN";
-        break;
-    case QSerialPort::ParityError:
-        reply_string = "PARITY ERROR";
-        break;
-    case QSerialPort::FramingError:
-        reply_string = "FRAMING ERROR";
-        break;
-    case QSerialPort::BreakConditionError:
-        reply_string = "BREAK CONDITION ERROR";
         break;
     case QSerialPort::WriteError:
         reply_string = "WRITE ERROR";
@@ -234,14 +230,12 @@ bool PfeifferSerialclass::checkState()
 
     if (status)
     {
-        event_timer.start();
         reconnect_timer.stop();
     }
     else
     {
-        event_timer.stop();
-        reconnect_timer.start();
         disconnectDevice();
+        reconnect_timer.start();
     }
 
     return status;

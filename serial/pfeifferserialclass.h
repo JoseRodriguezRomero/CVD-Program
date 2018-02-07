@@ -15,8 +15,6 @@ private:
     PfeifferSerialStruct *private_struct;
 
     QSerialPort *serial_port;
-
-    QTimer event_timer;
     QTimer reconnect_timer;
 
     QString port_name;
