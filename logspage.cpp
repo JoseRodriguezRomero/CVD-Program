@@ -240,6 +240,9 @@ void LogsPage::logReactorTemp(int server_address, float temp)
 
         reactor_temp_chart.createDefaultAxes();
 
+        reactor_temp_chart.axisX()->setTitleText("Time [m]");
+        reactor_temp_chart.axisY()->setTitleText("Temperature [ºC]");
+
         break;
     }
 }

@@ -48,6 +48,7 @@ struct PfeifferRequestStruct
     char mneumonic;
     bool pending;
     bool enquiry;
+    bool enquirying;
     QVector<uchar> args;
 };
 
@@ -166,6 +167,9 @@ void PfeifferSerialclass::processSerialRequestQueue()
     {
         msg.append(args.at(i));
     }
+
+    msg.append('\r');
+    msg.append('\n');
 
     if (serial_port->isWritable())
     {
@@ -316,6 +320,104 @@ void PfeifferSerialclass::ManageReply()
     if ((read_buffer.at(read_buffer.length()-2) != '\r') ||
             (read_buffer.at(read_buffer.length()-1) != '\n'))
     {
+        private_struct->process_queue[0].pending = false;
+        event_timer.start();
+    }
+
+    if (private_struct->process_queue.first().enquiry)
+    {
+        if (private_struct->process_queue.first().enquirying)
+        {
+            switch (private_struct->process_queue.first().mneumonic) {
+            case BAU:
+                break;
+            case CAX:
+                break;
+            case CID:
+                break;
+            case DCB:
+                break;
+            case DCC:
+                break;
+            case DCD:
+                break;
+            case DCS:
+                break;
+            case DGS:
+                break;
+            case ERR:
+                break;
+            case FIL:
+                break;
+            case FSR:
+                break;
+            case LOC:
+                break;
+            case NAD:
+                break;
+            case OFC:
+                break;
+            case PNR:
+                break;
+            case PRX:
+                break;
+            case PUC:
+                break;
+            case RSX:
+                break;
+            case SAV:
+                break;
+            case SCX:
+                break;
+            case SEN:
+                break;
+            case SPX:
+                break;
+            case SPS:
+                break;
+            case TAI:
+                break;
+            case TAS:
+                break;
+            case TDI:
+                break;
+            case TEE:
+                break;
+            case TEP:
+                break;
+            case TID:
+                break;
+            case TKB:
+                break;
+            case TRA:
+                break;
+            case UNI:
+                break;
+            case WDT:
+                break;
+            }
+        }
+        else
+        {
+            if (serial_port->isWritable())
+            {
+                serial_port->write('\x05');
+
+                if (serial_port->waitForBytesWritten())
+                {
+                    private_struct->process_queue[0].pending = true;
+                }
+            }
+            else
+            {
+                private_struct->process_queue[0].pending = false;
+                event_timer.start();
+            }
+        }
+    }
+    else
+    {
+        private_struct->process_queue.remove(0);
         private_struct->process_queue[0].pending = false;
         event_timer.start();
     }

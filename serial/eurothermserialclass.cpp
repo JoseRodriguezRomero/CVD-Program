@@ -508,7 +508,7 @@ void EurothermSerialClass::setBaudRate(const QSerialPort::BaudRate baud_rate)
 
 void EurothermSerialClass::setParity(const QSerialPort::Parity parity)
 {
-    this->parity = static_cast<QSerialPort::Parity>(parity);
+    this->parity = parity;
 }
 
 void EurothermSerialClass::setStopBits(const QSerialPort::StopBits stop_bits)
