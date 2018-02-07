@@ -27,6 +27,27 @@ public:
         Off
     };
 
+    enum Sensor {
+        Sensor1 = 0,
+        Sensor2 = 1,
+        Sensor3 = 2,
+        Sensor4 = 3,
+        Sensor5 = 4,
+        Sensor6 = 5
+    };
+
+    enum ControllingSource {
+        Sensor1 =           0,
+        Sensor2 =           1,
+        Sensor3 =           2,
+        Sensor4 =           3,
+        Sensor5 =           4,
+        Sensor6 =           5,
+        ExternalControl =   6,
+        Manual =            7,
+        HotStart =          8
+    };
+
 public:
     PfeifferSerialclass(QObject *parent);
     ~PfeifferSerialclass();
@@ -42,7 +63,10 @@ signals:
     void ErrorString(const QString &error_string, bool status);
     void deviceConnected(QSerialPort::SerialPortError);
 
-    void sensorStatus(int sensor_num, SensorStatus status);
+    void sensorStatus(Sensor sensor, SensorStatus status);
+    void sensorControl(Sensor sensor, ControllingSource switch_on,
+                       ControllingSource switch_off, float switch_on_value,
+                       float switch_off_value);
 
 public slots:
     void processSerialRequestQueue();
@@ -51,8 +75,13 @@ public slots:
     void setBaudRate(const QSerialPort::BaudRate baud_rate);
 
     void requestReadSensorStatuses();
+    void requestReadSensorControl(Sensor sensor);
 
     void requestWriteSensorStatus(int sensor_num, SensorStatus status);
+    void requestWriteSensorControl(Sensor sensor, ControllingSource switch_on,
+                                   ControllingSource switch_off,
+                                   float switch_on_value,
+                                   float switch_off_value);
 
     bool checkState();
 

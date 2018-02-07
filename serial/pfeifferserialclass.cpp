@@ -26,7 +26,7 @@
 #define PUC             {'P','U','C'}
 #define RSX             {'R','S','X'}
 #define SAV             {'S','A','V'}
-#define SCX             {'S','C','X'}
+#define SC_X_           {'S','C'}
 #define SEN             {'S','E','N'}
 #define SP_X_           {'S','P'}
 #define SPS             {'S','P','S'}
@@ -270,6 +270,38 @@ void PfeifferSerialclass::requestReadSensorStatuses()
     addReadRequestToQueue(private_struct,SEN_ID,SEN);
 }
 
+void PfeifferSerialclass::requestReadSensorControl(
+        PfeifferSerialclass::Sensor sensor)
+{
+    QVector<char> mneumonic(SC_X_);
+    char mneumonic_idd = 'A';
+
+    switch (sensor) {
+    case Sensor::Sensor1 :
+        break;
+    case Sensor::Sensor2 :
+        mneumonic_idd += 1;
+        break;
+    case Sensor::Sensor3 :
+        mneumonic_idd += 2;
+        break;
+    case Sensor::Sensor4 :
+        mneumonic_idd += 3;
+        break;
+    case Sensor::Sensor5 :
+        mneumonic_idd += 4;
+        break;
+    case Sensor::Sensor6 :
+        mneumonic_idd += 5;
+        break;
+    default :
+        return;
+    }
+
+    mneumonic.append(mneumonic_idd);
+    addReadRequestToQueue(private_struct,SCX_ID,mneumonic);
+}
+
 void PfeifferSerialclass::requestWriteSensorStatus(
         int sensor_num, PfeifferSerialclass::SensorStatus status)
 {
@@ -291,6 +323,15 @@ void PfeifferSerialclass::requestWriteSensorStatus(
     }
 
     addWriteRequestToQueue(private_struct,SEN_ID,SEN,statuses);
+}
+
+void PfeifferSerialclass::requestWriteSensorControl(
+        PfeifferSerialclass::Sensor sensor,
+        PfeifferSerialclass::ControllingSource switch_on,
+        PfeifferSerialclass::ControllingSource switch_off,
+        float switch_on_value, float switch_off_value)
+{
+
 }
 
 bool PfeifferSerialclass::checkState()
@@ -465,6 +506,36 @@ void PfeifferSerialclass::ManageReply()
             case SAV_ID:
                 break;
             case SCX_ID:
+                if (read_buffer.length() == 18)
+                {
+                    Sensor sensor;
+                    char mnenumonic_idd = private_struct->process_queue.first().
+                            mneumonic.last();
+
+                    switch (mnenumonic_idd) {
+                    case 'A':
+                        sensor = Sensor::Sensor1;
+                        break;
+                    case 'B':
+                        sensor = Sensor::Sensor2;
+                        break;
+                    case 'C':
+                        sensor = Sensor::Sensor3;
+                        break;
+                    case 'D':
+                        sensor = Sensor::Sensor4;
+                        break;
+                    case 'E':
+                        sensor = Sensor::Sensor5;
+                        break;
+                    case 'F':
+                        sensor = Sensor::Sensor6;
+                        break;
+                    }
+
+                    char switch_on_source  = read_buffer.at(0);
+                    char switch_off_source = read_buffer.at(1);
+                }
                 break;
             case SEN_ID:
                 if (read_buffer.length() == 8)
