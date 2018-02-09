@@ -34,22 +34,29 @@ public:
         Baud1200        = 4
     };
 
+    enum Alarm {
+        Alarm1,
+        Alarm2,
+        Alarm3,
+        Alarm4
+    };
+
     enum Parities {
         NoParity        = 0,
         EvenParity      = 1,
         OddParity       = 2
     };
 
-    enum Setpoints {
-        SP1             = 0,
-        SP2             = 1
+    enum Setpoint {
+        Setpoint1,
+        Setpoint2
     };
 
-    enum TimerStatuses {
-        Reset           = 0,
-        Run             = 1,
-        Hold            = 2,
-        End             = 3
+    enum TimerStatus {
+        Reset,
+        Run,
+        Hold,
+        End
     };
 
 private:
@@ -89,7 +96,7 @@ public slots:
     void requestReadDerivativeTime(const int server_address);
     void requestReadInputRangeLowLimit(const int server_address);
     void requestReadInputRangeHighLimit(const int server_address);
-    void requestReadAlarmThreshold(const int server_address, const int alarm_num);
+    void requestReadAlarmThreshold(const int server_address, const Alarm alarm);
     void requestReadActiveSetpoint(const int server_address);
     void requestReadChannel2Deadband(const int server_address);
     void requestReadCutbackLow(const int server_address);
@@ -105,20 +112,20 @@ public slots:
     void requestReadSafeOutputValueforSensorBreak(const int server_address);
     void requestReadSetpointRateLimitValue(const int server_address);
     void requestReadCalculatedError(const int server_address);
-    void requestReadAlarmHysteresis(const int server_address, int alarm_num);
+    void requestReadAlarmHysteresis(const int server_address, const Alarm alarm);
     void resquestReadInstrumentStatus(const int server_address);
 
     void requestWriteTargetSetpoint(const int server_address, const float setpoint);        // Do not use this function continuously!!
     void requestWriteProportionalBand(const int server_address, const float pb);
     void requestWriteIntegralTime(const int server_address, const float ti);
     void requestWriteDerivativeTime(const int server_address, const float td);
-    void requestWriteAlarmThreshold(const int server_address, const int alarm_num, const float a);
-    void requestWriteActiveSetpoint(const int server_address, const Setpoints sp_sel);
+    void requestWriteAlarmThreshold(const int server_address, const Alarm alarm, const float a);
+    void requestWriteActiveSetpoint(const int server_address, const Setpoint setpoint);
     void requestWriteChannel2Deadband(const int server_address, const float d_band);
     void requestWriteCutbackLow(const int server_address, const float cb_lo);
     void requestWriteCutbackHigh(const int server_address, const float cb_hi);
     void requestWriteRelativeCoolCh2Gain(const int server_address, const float r2g);
-    void requestWriteTimerStatus(const int server_address, const TimerStatuses t_stat);
+    void requestWriteTimerStatus(const int server_address, const TimerStatus status);
     void requestWriteSetpoint(const int server_address, const int sp_num, const float sp);  // Do not use this function continuously!!
     void requestWriteRemoteSetpoint(const int server_address, const float rm_sp);
     void requestWriteLocalTrim(const int server_address, const float loc_t);
@@ -127,7 +134,7 @@ public slots:
     void requestWriteOutputLowLimit(const int server_address, const float op_lo);
     void requestWriteSafeOutputValueforSensorBreak(const int server_address, const float safe);
     void requestWriteSetpointRateLimitValue(const int server_address, const float sp_rat);
-    void requestWriteAlarmHysteresis(const int server_address, int alarm_num, const float a_hys);
+    void requestWriteAlarmHysteresis(const int server_address, const Alarm alarm, const float a_hys);
 
     void processModbusRequestQueue();
 
@@ -149,13 +156,13 @@ signals:
     void InputRangeLowLimit(const int server_address, const float low_range);
     void InputRangeHighLimit(const int server_address, const float high_range);
     void AlarmThreshold(const int server_address, const int alarm_num, const float a1);
-    void ActiveSetpoint(const int server_address, const Setpoints sp_sel);
+    void ActiveSetpoint(const int server_address, const Setpoint setpoint);
     void Channel2Deadband(const int server_address, const float d_band);
     void CutbackLow(const int server_address, const float cb_lo);
     void CutbackHigh(const int server_address, const float cb_hi);
     void RelativeCoolCh2Gain(const int server_address, const float r2g);
-    void TimerStatus(const int server_address, const TimerStatuses t_stat);
-    void Setpoint(const int server_address, const int sp_num, const float sp);
+    void CurrentTimerStatus(const int server_address, const TimerStatus t_stat);
+    void CurrentSetpointValue(const int server_address, const Setpoint sp_sel, const float sp);
     void RemoteSetpoint(const int server_address, const float rm_sp);
     void LocalTrim(const int server_address, const float rm_sp);
     void ManualReset(const int server_address, const float mr);

@@ -318,10 +318,10 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent) :
     data_bits = QSerialPort::Data8;
 
     reconnect_timer.setInterval(1000);
-    reconnect_timer.setSingleShot(true);
+    reconnect_timer.setSingleShot(false);
 
     event_timer.setInterval(100);
-    event_timer.setSingleShot(true);
+    event_timer.setSingleShot(false);
 
     connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
     connect(&event_timer,SIGNAL(timeout()),
@@ -391,6 +391,7 @@ void EurothermSerialClass::connectDevice()
     }
     else
     {
+        event_timer.stop();
         reconnect_timer.start();
     }
 }
@@ -404,6 +405,9 @@ void EurothermSerialClass::disconnectDevice()
 
     modbus_client->disconnectDevice();
     modbus_client->deleteLater();
+
+    event_timer.stop();
+    reconnect_timer.stop();
 
     modbus_client = nullptr;
 }
@@ -591,15 +595,15 @@ void EurothermSerialClass::requestReadInputRangeHighLimit(
 }
 
 void EurothermSerialClass::requestReadAlarmThreshold(const int server_address,
-                                                     const int alarm_num)
+                                                     const Alarm alarm)
 {
     int start_address = 0;
 
-    switch (alarm_num) {
-    case 1:
+    switch (alarm) {
+    case Alarm1:
         start_address = A1;
         break;
-    case 2:
+    case Alarm2:
         start_address = A2;
         break;
     default:
@@ -720,21 +724,21 @@ void EurothermSerialClass::requestReadCalculatedError(const int server_address)
 }
 
 void EurothermSerialClass::requestReadAlarmHysteresis(const int server_address,
-                                                      int alarm_num)
+                                                      const Alarm alarm)
 {
     int start_address = 0;
 
-    switch (alarm_num) {
-    case 1:
+    switch (alarm) {
+    case Alarm1:
         start_address = A1_HYS;
         break;
-    case 2:
+    case Alarm2:
         start_address = A2_HYS;
         break;
-    case 3:
+    case Alarm3:
         start_address = A3_HYS;
         break;
-    case 4:
+    case Alarm4:
         start_address = A4_HYS;
         break;
     default:
@@ -786,16 +790,16 @@ void EurothermSerialClass::requestWriteDerivativeTime(const int server_address,
 }
 
 void EurothermSerialClass::requestWriteAlarmThreshold(const int server_address,
-                                                      const int alarm_num,
+                                                      const Alarm alarm,
                                                       const float a)
 {
     int start_address = 0;
 
-    switch (alarm_num) {
-    case 1:
+    switch (alarm) {
+    case Alarm1:
         start_address = A1;
         break;
-    case 2:
+    case Alarm2:
         start_address = A2;
         break;
     default:
@@ -808,11 +812,24 @@ void EurothermSerialClass::requestWriteAlarmThreshold(const int server_address,
 }
 
 void EurothermSerialClass::requestWriteActiveSetpoint(
-        const int server_address, const EurothermSerialClass::Setpoints sp_sel)
+        const int server_address, const EurothermSerialClass::Setpoint setpoint)
 {
+    int sp_sel;
+
+    switch (setpoint) {
+    case Setpoint1:
+        sp_sel = 0;
+        break;
+    case Setpoint2:
+        sp_sel = 1;
+        break;
+    default:
+        return;
+    }
+
     add8BitRequestToQueue(this,private_struct,private_struct->process_queue,
                           server_address,SP_SEL,HoldingRegister,WriteRequest,
-                          static_cast<quint8>(sp_sel));
+                          sp_sel);
 }
 
 void EurothermSerialClass::requestWriteChannel2Deadband(
@@ -846,13 +863,31 @@ void EurothermSerialClass::requestWriteRelativeCoolCh2Gain(
                            server_address,R2G,HoldingRegister,WriteRequest,r2g);
 }
 
-void EurothermSerialClass::requestWriteTimerStatus(
-        const int server_address,
-        const EurothermSerialClass::TimerStatuses t_stat)
+void EurothermSerialClass::requestWriteTimerStatus(const int server_address,
+        const EurothermSerialClass::TimerStatus status)
 {
+    int status_sel;
+
+    switch (status) {
+    case Reset:
+        status_sel = 0;
+        break;
+    case Run:
+        status_sel = 1;
+        break;
+    case Hold:
+        status_sel = 2;
+        break;
+    case End:
+        status_sel = 3;
+        break;
+    default:
+        return;
+    }
+
     add8BitRequestToQueue(this,private_struct,private_struct->process_queue,
                           server_address,T_STAT,HoldingRegister,WriteRequest,
-                          static_cast<quint8>(t_stat));
+                          status_sel);
 }
 
 void EurothermSerialClass::requestWriteSetpoint(const int server_address,
@@ -933,22 +968,22 @@ void EurothermSerialClass::requestWriteSetpointRateLimitValue(
 }
 
 void EurothermSerialClass::requestWriteAlarmHysteresis(const int server_address,
-                                                       int alarm_num,
+                                                       const Alarm alarm,
                                                        const float a_hys)
 {
     int start_address = 0;
 
-    switch (alarm_num) {
-    case 1:
+    switch (alarm) {
+    case Alarm1:
         start_address = A1_HYS;
         break;
-    case 2:
+    case Alarm2:
         start_address = A2_HYS;
         break;
-    case 3:
+    case Alarm3:
         start_address = A3_HYS;
         break;
-    case 4:
+    case Alarm4:
         start_address = A4_HYS;
         break;
     default:
@@ -1058,8 +1093,18 @@ void EurothermSerialClass::ManageReply()
         emit AlarmThreshold(server_address, 2, value_float32);
         break;
     case SP_SEL:
-        emit ActiveSetpoint(server_address,
-                            static_cast<Setpoints>(value_uint8));
+        Setpoint setpoint;
+        switch (value_uint8) {
+        case 0:
+            setpoint = Setpoint1;
+            break;
+        case 1:
+            setpoint = Setpoint2;
+            break;
+        default:
+            return;
+        }
+        emit ActiveSetpoint(server_address, setpoint);
         break;
     case D_BAND:
         emit Channel2Deadband(server_address, value_float32);
@@ -1074,15 +1119,31 @@ void EurothermSerialClass::ManageReply()
         emit RelativeCoolCh2Gain(server_address, value_float32);
         break;
     case T_STAT:
-        emit TimerStatus(server_address,
-                         static_cast<TimerStatuses>(value_uint8));
+        TimerStatus status;
+        switch (value_uint8) {
+        case 0:
+            status = Reset;
+            break;
+        case 1:
+            status = Run;
+            break;
+        case 2:
+            status = Hold;
+            break;
+        case 3:
+            status = End;
+        default:
+            return;
+        }
+
+        emit CurrentTimerStatus(server_address, status);
         break;
     case SP1:
-        emit Setpoint(server_address, 1, value_float32);
+        emit CurrentSetpointValue(server_address, Setpoint1, value_float32);
         break;
     case SP2:
         break;
-        emit Setpoint(server_address, 2, value_float32);
+        emit CurrentSetpointValue(server_address, Setpoint2, value_float32);
     case RM_SP:
         emit RemoteSetpoint(server_address, value_float32);
         break;
@@ -1468,19 +1529,14 @@ void EurothermSerialClass::ManageReply()
     }
 
     private_struct->process_queue[0].pending = false;
-    event_timer.start();
 }
 
 void EurothermSerialClass::processModbusRequestQueue()
 {
-    if (reconnect_timer.isActive())
-    {
-        return;
-    }
-
     if (private_struct->failed_attemps >= MAX_FAILED_ATTEMPS)
     {
         disconnectDevice();
+        event_timer.stop();
         reconnect_timer.start();
         private_struct->failed_attemps = 0;
         return;
@@ -1489,6 +1545,7 @@ void EurothermSerialClass::processModbusRequestQueue()
     if (!checkState())
     {
         disconnectDevice();
+        event_timer.stop();
         reconnect_timer.start();
         return;
     }
@@ -1550,10 +1607,6 @@ void EurothermSerialClass::processModbusRequestQueue()
         if (reply->error() == QModbusDevice::NoError)
         {
             ManageReply();
-        }
-        else
-        {
-            event_timer.start();
         }
     }
     else

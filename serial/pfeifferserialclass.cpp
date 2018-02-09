@@ -1,5 +1,8 @@
 #include "pfeifferserialclass.h"
 
+#define MAX_QUEUE_LEN           20
+#define MAX_FAILED_ATTEMPS      3
+
 #define PFEIFFER_FLOW_CONTROL       QSerialPort::NoFlowControl
 #define PFEIFFER_STOP_BITS          QSerialPort::OneStop
 #define PFEIFFER_DATA_BITS          QSerialPort::Data8
@@ -94,6 +97,7 @@ struct PfeifferRequestStruct
 struct PfeifferSerialStruct {
     QVector<PfeifferRequestStruct> process_queue;
     QByteArray buffer;
+    uint failed_attempts;
 };
 
 void addReadRequestToQueue(PfeifferSerialStruct *parent,
@@ -132,12 +136,13 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent) :
     serial_port = nullptr;
 
     reconnect_timer.setInterval(1000);
-    reconnect_timer.setSingleShot(true);
+    reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(50);
-    event_timer.setSingleShot(true);
+    event_timer.setInterval(100);
+    event_timer.setSingleShot(false);
 
     private_struct = new PfeifferSerialStruct;
+    private_struct->failed_attempts = 0;
 
     connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
     connect(&event_timer,SIGNAL(timeout()),
@@ -190,11 +195,6 @@ QSerialPort::Parity PfeifferSerialclass::Parity() const
 
 void PfeifferSerialclass::processSerialRequestQueue()
 {
-    if (event_timer.isActive())
-    {
-        return;
-    }
-
     if (!private_struct->process_queue.length())
     {
         return;
@@ -202,17 +202,16 @@ void PfeifferSerialclass::processSerialRequestQueue()
 
     if (serial_port == nullptr)
     {
-        if (!reconnect_timer.isActive())
-        {
-            reconnect_timer.start();
-        }
+        event_timer.stop();
+        reconnect_timer.start();
         return;
     }
 
     if (!serial_port->isOpen())
     {
-        checkState();
         disconnectDevice();
+        event_timer.stop();
+        reconnect_timer.start();
 
         if (!reconnect_timer.isActive())
         {
@@ -255,10 +254,6 @@ void PfeifferSerialclass::processSerialRequestQueue()
             private_struct->process_queue[0].pending = true;
         }
     }
-    else
-    {
-        event_timer.start();
-    }
 }
 
 void PfeifferSerialclass::setPortName(const QString &port_name)
@@ -299,7 +294,7 @@ void PfeifferSerialclass::requestReadSensorControl(
         mneumonic_idd = 'E';
         break;
     case Sensor::Sensor6 :
-        mneumonic_idd += 'F';
+        mneumonic_idd = 'F';
         break;
     default :
         return;
@@ -312,7 +307,34 @@ void PfeifferSerialclass::requestReadSensorControl(
 void PfeifferSerialclass::requestReadStatusAndPressure(
         PfeifferSerialclass::Sensor sensor)
 {
+    QVector<char> mneumonic(PR_X_);
+    char mneumonic_idd;
 
+    switch (sensor) {
+    case Sensor::Sensor1 :
+        mneumonic_idd = '1';
+        break;
+    case Sensor::Sensor2 :
+        mneumonic_idd = '2';
+        break;
+    case Sensor::Sensor3 :
+        mneumonic_idd = '3';
+        break;
+    case Sensor::Sensor4 :
+        mneumonic_idd = '4';
+        break;
+    case Sensor::Sensor5 :
+        mneumonic_idd = '5';
+        break;
+    case Sensor::Sensor6 :
+        mneumonic_idd = '6';
+        break;
+    default :
+        return;
+    }
+
+    mneumonic.append(mneumonic_idd);
+    addReadRequestToQueue(private_struct,PRX_ID,mneumonic);
 }
 
 void PfeifferSerialclass::requestWriteSensorStatus(
@@ -447,6 +469,8 @@ void PfeifferSerialclass::requestWriteSensorControl(
             args.append(value_args[i]->at(j).toLatin1());
         }
     }
+
+    addWriteRequestToQueue(private_struct,SCX_ID,mneumonic,args);
 }
 
 bool PfeifferSerialclass::checkState()
@@ -458,6 +482,7 @@ bool PfeifferSerialclass::checkState()
     {
         emit ErrorString("Pfeiffer: CONNECTION ERROR", false);
         disconnectDevice();
+        event_timer.stop();
         reconnect_timer.start();
         return false;
     }
@@ -502,13 +527,10 @@ bool PfeifferSerialclass::checkState()
     emit ErrorString("Pfeiffer: " + reply_string, status);
     emit deviceConnected(serial_port->error());
 
-    if (status)
-    {
-        reconnect_timer.stop();
-    }
-    else
+    if (!status)
     {
         disconnectDevice();
+        event_timer.stop();
         reconnect_timer.start();
     }
 
@@ -517,11 +539,6 @@ bool PfeifferSerialclass::checkState()
 
 void PfeifferSerialclass::connectDevice()
 {
-    if (reconnect_timer.isActive())
-    {
-        return;
-    }
-
     if (serial_port == nullptr)
     {
         serial_port = new QSerialPort(this);
@@ -546,12 +563,16 @@ void PfeifferSerialclass::connectDevice()
     {
         emit ErrorString("Pfeiffer: CONNECTED", true);
         emit deviceConnected(serial_port->error());
+        event_timer.start();
+        reconnect_timer.stop();
     }
     {
         serial_port->deleteLater();
         serial_port = nullptr;
         emit ErrorString("Pfeiffer: CONNECTION ERROR", true);
         emit deviceConnected(QSerialPort::NotOpenError);
+        event_timer.stop();
+        reconnect_timer.start();
     }
 }
 
@@ -561,6 +582,9 @@ void PfeifferSerialclass::disconnectDevice()
     {
         return;
     }
+
+    event_timer.stop();
+    reconnect_timer.stop();
 
     serial_port->close();
     serial_port->deleteLater();
@@ -584,6 +608,7 @@ void PfeifferSerialclass::ManageReply()
         if (private_struct->process_queue.first().enquirying)
         {
             private_struct->buffer = read_buffer;
+            bool valid_reply = true;
 
             switch (private_struct->process_queue.first().mneumonic_id) {
             case BAU_ID:
@@ -617,6 +642,7 @@ void PfeifferSerialclass::ManageReply()
             case PNR_ID:
                 break;
             case PRX_ID:
+                valid_reply = manageStatusAndPressureReply();
                 break;
             case PUC_ID:
                 break;
@@ -625,10 +651,10 @@ void PfeifferSerialclass::ManageReply()
             case SAV_ID:
                 break;
             case SCX_ID:
-                manageSensorControlReply();
+                valid_reply = manageSensorControlReply();
                 break;
             case SEN_ID:
-                manageSensorStatusReply();
+                valid_reply = manageSensorStatusReply();
                 break;
             case SPX_ID:
                 break;
@@ -656,8 +682,17 @@ void PfeifferSerialclass::ManageReply()
                 break;
             }
 
-            private_struct->process_queue.remove(0);
-            private_struct->process_queue[0].pending = false;
+            if (valid_reply)
+            {
+                private_struct->process_queue.remove(0);
+                private_struct->process_queue[0].pending = false;
+            }
+            else
+            {
+                private_struct->process_queue[0].pending = false;
+                private_struct->process_queue[0].enquirying = false;
+            }
+
             event_timer.start();
         }
         else
@@ -678,7 +713,6 @@ void PfeifferSerialclass::ManageReply()
             else
             {
                 private_struct->process_queue[0].pending = false;
-                event_timer.start();
             }
         }
     }
@@ -686,16 +720,18 @@ void PfeifferSerialclass::ManageReply()
     {
         private_struct->process_queue.remove(0);
         private_struct->process_queue[0].pending = false;
-        event_timer.start();
     }
 }
 
-void PfeifferSerialclass::manageSensorStatusReply()
+bool PfeifferSerialclass::manageSensorStatusReply()
 {
     QByteArray &read_buffer = private_struct->buffer;
 
     if (read_buffer.length() == 8)
     {
+        Sensor sensors[6];
+        SensorStatus statuses[6];
+
         for (int i = 0; i < 6; i++)
         {
             Sensor sensor;
@@ -719,29 +755,43 @@ void PfeifferSerialclass::manageSensorStatusReply()
             case 5:
                 sensor = Sensor6;
                 break;
-            default:
-                return;
             }
 
-            if (read_buffer.at(i) == '2')
-            {
-                emit sensorStatus(sensor, On);
+            SensorStatus status;
+
+            switch (read_buffer.at(i)) {
+            case '2':
+                status = On;
+                break;
+            case '1':
+                status = Off;
+                break;
+            default:
+                return false;
             }
-            else if (read_buffer.at(i) == '1')
-            {
-                emit sensorStatus(sensor, Off);
-            }
+
+            sensors[i] = sensor;
+            statuses[i] = status;
         }
+
+        for (int i = 0; i < 6; i++)
+        {
+            emit sensorStatus(sensors[i], statuses[i]);
+        }
+
+        return true;
     }
+
+    return false;
 }
 
-void PfeifferSerialclass::manageSensorControlReply()
+bool PfeifferSerialclass::manageSensorControlReply()
 {
     QByteArray &read_buffer = private_struct->buffer;
 
     if (read_buffer.length() != 20)
     {
-        return;
+        return false;
     }
 
     Sensor sensor;
@@ -750,25 +800,25 @@ void PfeifferSerialclass::manageSensorControlReply()
 
     switch (mnenumonic_idd) {
     case 'A':
-        sensor = Sensor::Sensor1;
+        sensor = Sensor1;
         break;
     case 'B':
-        sensor = Sensor::Sensor2;
+        sensor = Sensor2;
         break;
     case 'C':
-        sensor = Sensor::Sensor3;
+        sensor = Sensor3;
         break;
     case 'D':
-        sensor = Sensor::Sensor4;
+        sensor = Sensor4;
         break;
     case 'E':
-        sensor = Sensor::Sensor5;
+        sensor = Sensor5;
         break;
     case 'F':
-        sensor = Sensor::Sensor6;
+        sensor = Sensor6;
         break;
     default:
-        return;
+        return false;
     }
 
     char switch_on_source_char  = read_buffer.at(0);
@@ -806,7 +856,7 @@ void PfeifferSerialclass::manageSensorControlReply()
         switch_on_source = HotStart;
         break;
     default:
-        return;
+        return false;
     }
 
     switch (switch_off_source_char) {
@@ -835,7 +885,7 @@ void PfeifferSerialclass::manageSensorControlReply()
         switch_off_source = ManualControl;
         break;
     default:
-        return;
+        return false;
     }
 
     QString switch_on_value_string;
@@ -857,11 +907,95 @@ void PfeifferSerialclass::manageSensorControlReply()
     float switch_on_value = switch_on_value_string.toFloat(&switch_on_cast);
     float switch_off_value = switch_on_value_string.toFloat(&switch_off_cast);
 
-    if (!(switch_off_cast && switch_on_cast))
+    if (switch_off_cast && switch_on_cast)
     {
-        return;
+        emit sensorControl(sensor,switch_on_source,switch_off_source,
+                           switch_on_value,switch_off_value);
     }
 
-    emit sensorControl(sensor,switch_on_source,switch_off_source,
-                       switch_on_value,switch_off_value);
+    return switch_off_cast && switch_on_cast;
+}
+
+bool PfeifferSerialclass::manageStatusAndPressureReply()
+{
+    QByteArray &read_buffer = private_struct->buffer;
+
+    if (read_buffer.length() != 11)
+    {
+        return false;
+    }
+
+    Sensor sensor;
+    char mnenumonic_idd = private_struct->process_queue.first().
+            mneumonic.last();
+
+    switch (mnenumonic_idd) {
+    case '1':
+        sensor = Sensor1;
+        break;
+    case '2':
+        sensor = Sensor2;
+        break;
+    case '3':
+        sensor = Sensor3;
+        break;
+    case '4':
+        sensor = Sensor4;
+        break;
+    case '5':
+        sensor = Sensor5;
+        break;
+    case '6':
+        sensor = Sensor6;
+        break;
+    default:
+        return false;
+    }
+
+    PressureMeasurementStatus status;
+    char status_char = read_buffer.at(0);
+
+    switch (status_char) {
+    case '0':
+        status = MeasurementDataOkay;
+        break;
+    case '1':
+        status = Underrange;
+        break;
+    case '2':
+        status = Overrange;
+        break;
+    case '3':
+        status = SensorError;
+        break;
+    case '4':
+        status = SensorOff;
+        break;
+    case '5':
+        status = NoSensor;
+        break;
+    case '6':
+        status = IdentificationError;
+        break;
+    default:
+        return false;
+    }
+
+    QString pressure_value_string;
+    float pressure_value;
+    bool pressure_cast;
+
+    for (int i = 0; i < 8; i++)
+    {
+        pressure_value_string.append(read_buffer.at(i+1));
+    }
+
+    pressure_value = pressure_value_string.toFloat(&pressure_cast);
+
+    if (pressure_cast)
+    {
+        emit sensorPressureAndStautus(sensor,status,pressure_value);
+    }
+
+    return pressure_cast;
 }

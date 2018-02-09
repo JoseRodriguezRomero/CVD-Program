@@ -28,24 +28,34 @@ public:
     };
 
     enum Sensor {
-        Sensor1 = 0,
-        Sensor2 = 1,
-        Sensor3 = 2,
-        Sensor4 = 3,
-        Sensor5 = 4,
-        Sensor6 = 5
+        Sensor1,
+        Sensor2,
+        Sensor3,
+        Sensor4,
+        Sensor5,
+        Sensor6
     };
 
     enum ControllingSource {
-        Sensor1Control =    0,
-        Sensor2Control =    1,
-        Sensor3Control =    2,
-        Sensor4Control =    3,
-        Sensor5Control =    4,
-        Sensor6Control =    5,
-        ExternalControl =   6,
-        ManualControl =     7,
-        HotStart =          8
+        Sensor1Control,
+        Sensor2Control,
+        Sensor3Control,
+        Sensor4Control,
+        Sensor5Control,
+        Sensor6Control,
+        ExternalControl,
+        ManualControl,
+        HotStart
+    };
+
+    enum PressureMeasurementStatus {
+        MeasurementDataOkay,
+        Underrange,
+        Overrange,
+        SensorError,
+        SensorOff,
+        NoSensor,
+        IdentificationError
     };
 
 public:
@@ -67,6 +77,9 @@ signals:
     void sensorControl(Sensor sensor, ControllingSource switch_on,
                        ControllingSource switch_off, float switch_on_value,
                        float switch_off_value);
+    void sensorPressureAndStautus(Sensor sensor,
+                                  PressureMeasurementStatus staus,
+                                  float pressure);
 
 public slots:
     void processSerialRequestQueue();
@@ -93,8 +106,9 @@ private slots:
     void ManageReply();
 
 private:
-    void manageSensorStatusReply();
-    void manageSensorControlReply();
+    bool manageSensorStatusReply();
+    bool manageSensorControlReply();
+    bool manageStatusAndPressureReply();
 };
 
 #endif // PFEIFFERSERIALCLASS_H
