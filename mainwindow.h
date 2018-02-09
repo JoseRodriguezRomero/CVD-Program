@@ -16,6 +16,7 @@
 #include "statusstring.h"
 
 #include "serial/eurothermserialclass.h"
+#include "serial/pfeifferserialclass.h"
 
 #include "serialsettingswindow.h"
 
@@ -32,6 +33,7 @@ private:
     StatusString pfeiffer_status_string;
 
     EurothermSerialClass eurotherm_serial;
+    PfeifferSerialclass pfeiffer_serial;
 
     SerialSettingsWindow serial_settings_window;
 

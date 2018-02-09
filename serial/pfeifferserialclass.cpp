@@ -93,6 +93,7 @@ struct PfeifferRequestStruct
 
 struct PfeifferSerialStruct {
     QVector<PfeifferRequestStruct> process_queue;
+    QByteArray buffer;
 };
 
 void addReadRequestToQueue(PfeifferSerialStruct *parent,
@@ -226,11 +227,16 @@ void PfeifferSerialclass::processSerialRequestQueue()
         return;
     }
 
-    char mneumonic = private_struct->process_queue.first().mneumonic;
+    QVector<char> mneumonic = private_struct->process_queue.first().mneumonic;
     QByteArray msg;
     msg.clear();
-    msg.append(mneumonic);
-    QVector<uchar> args = private_struct->process_queue.first().args;
+
+    for (int i = 0; i < mneumonic.length(); i++)
+    {
+        msg.append(mneumonic.at(i));
+    }
+
+    QVector<char> args = private_struct->process_queue.first().args;
 
     for (int i = 0; i < args.length(); i++)
     {
@@ -274,25 +280,26 @@ void PfeifferSerialclass::requestReadSensorControl(
         PfeifferSerialclass::Sensor sensor)
 {
     QVector<char> mneumonic(SC_X_);
-    char mneumonic_idd = 'A';
+    char mneumonic_idd;
 
     switch (sensor) {
     case Sensor::Sensor1 :
+        mneumonic_idd = 'A';
         break;
     case Sensor::Sensor2 :
-        mneumonic_idd += 1;
+        mneumonic_idd = 'B';
         break;
     case Sensor::Sensor3 :
-        mneumonic_idd += 2;
+        mneumonic_idd = 'C';
         break;
     case Sensor::Sensor4 :
-        mneumonic_idd += 3;
+        mneumonic_idd = 'D';
         break;
     case Sensor::Sensor5 :
-        mneumonic_idd += 4;
+        mneumonic_idd = 'E';
         break;
     case Sensor::Sensor6 :
-        mneumonic_idd += 5;
+        mneumonic_idd += 'F';
         break;
     default :
         return;
@@ -300,6 +307,12 @@ void PfeifferSerialclass::requestReadSensorControl(
 
     mneumonic.append(mneumonic_idd);
     addReadRequestToQueue(private_struct,SCX_ID,mneumonic);
+}
+
+void PfeifferSerialclass::requestReadStatusAndPressure(
+        PfeifferSerialclass::Sensor sensor)
+{
+
 }
 
 void PfeifferSerialclass::requestWriteSensorStatus(
@@ -331,7 +344,109 @@ void PfeifferSerialclass::requestWriteSensorControl(
         PfeifferSerialclass::ControllingSource switch_off,
         float switch_on_value, float switch_off_value)
 {
+    QVector<char> mneumonic(SC_X_);
+    QVector<char> args;
 
+    switch (sensor) {
+    case Sensor::Sensor1:
+        mneumonic.append('A');
+        break;
+    case Sensor::Sensor2:
+        mneumonic.append('B');
+        break;
+    case Sensor::Sensor3:
+        mneumonic.append('C');
+        break;
+    case Sensor::Sensor4:
+        mneumonic.append('D');
+        break;
+    case Sensor::Sensor5:
+        mneumonic.append('E');
+        break;
+    case Sensor::Sensor6:
+        mneumonic.append('F');
+        break;
+    default:
+        return;
+    }
+
+    switch (switch_on) {
+    case Sensor1Control:
+        args.append('0');
+        break;
+    case Sensor2Control:
+        args.append('1');
+        break;
+    case Sensor3Control:
+        args.append('2');
+        break;
+    case Sensor4Control:
+        args.append('3');
+        break;
+    case Sensor5Control:
+        args.append('4');
+        break;
+    case Sensor6Control:
+        args.append('5');
+        break;
+    case ExternalControl:
+        args.append('6');
+        break;
+    case ManualControl:
+        args.append('7');
+        break;
+    case HotStart:
+        args.append('8');
+        break;
+    default:
+        return;
+    }
+
+    switch (switch_off) {
+    case Sensor1Control:
+        args.append('0');
+        break;
+    case Sensor2Control:
+        args.append('1');
+        break;
+    case Sensor3Control:
+        args.append('2');
+        break;
+    case Sensor4Control:
+        args.append('3');
+        break;
+    case Sensor5Control:
+        args.append('4');
+        break;
+    case Sensor6Control:
+        args.append('5');
+        break;
+    case ExternalControl:
+        args.append('6');
+        break;
+    case ManualControl:
+        args.append('7');
+        break;
+    default:
+        return;
+    }
+
+    QString switch_on_value_string;
+    QString switch_off_value_string;
+
+    switch_on_value_string.sprintf("%1.1E",switch_on_value);
+    switch_off_value_string.sprintf("%1.1E",switch_off_value);
+
+    QString *value_args[2] = {&switch_on_value_string,
+                              &switch_off_value_string};
+
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 7; j++)
+        {
+            args.append(value_args[i]->at(j).toLatin1());
+        }
+    }
 }
 
 bool PfeifferSerialclass::checkState()
@@ -410,6 +525,8 @@ void PfeifferSerialclass::connectDevice()
     if (serial_port == nullptr)
     {
         serial_port = new QSerialPort(this);
+
+        connect(serial_port,SIGNAL(readyRead()),this,SLOT(ManageReply()));
     }
     else if (serial_port->isOpen())
     {
@@ -466,6 +583,8 @@ void PfeifferSerialclass::ManageReply()
     {
         if (private_struct->process_queue.first().enquirying)
         {
+            private_struct->buffer = read_buffer;
+
             switch (private_struct->process_queue.first().mneumonic_id) {
             case BAU_ID:
                 break;
@@ -506,52 +625,10 @@ void PfeifferSerialclass::ManageReply()
             case SAV_ID:
                 break;
             case SCX_ID:
-                if (read_buffer.length() == 18)
-                {
-                    Sensor sensor;
-                    char mnenumonic_idd = private_struct->process_queue.first().
-                            mneumonic.last();
-
-                    switch (mnenumonic_idd) {
-                    case 'A':
-                        sensor = Sensor::Sensor1;
-                        break;
-                    case 'B':
-                        sensor = Sensor::Sensor2;
-                        break;
-                    case 'C':
-                        sensor = Sensor::Sensor3;
-                        break;
-                    case 'D':
-                        sensor = Sensor::Sensor4;
-                        break;
-                    case 'E':
-                        sensor = Sensor::Sensor5;
-                        break;
-                    case 'F':
-                        sensor = Sensor::Sensor6;
-                        break;
-                    }
-
-                    char switch_on_source  = read_buffer.at(0);
-                    char switch_off_source = read_buffer.at(1);
-                }
+                manageSensorControlReply();
                 break;
             case SEN_ID:
-                if (read_buffer.length() == 8)
-                {
-                    for (int i = 0; i < 6; i++)
-                    {
-                        if (read_buffer.at(i) == '2')
-                        {
-                            emit sensorStatus(i, On);
-                        }
-                        else if (read_buffer.at(i) == '1')
-                        {
-                            emit sensorStatus(i, Off);
-                        }
-                    }
-                }
+                manageSensorStatusReply();
                 break;
             case SPX_ID:
                 break;
@@ -575,7 +652,7 @@ void PfeifferSerialclass::ManageReply()
                 break;
             case UNI_ID:
                 break;
-            case WDT_iD:
+            case WDT_ID:
                 break;
             }
 
@@ -587,8 +664,11 @@ void PfeifferSerialclass::ManageReply()
         {
             if (serial_port->isWritable())
             {
+                QByteArray enq;
+                enq.append('\x05');
+
                 serial_port->flush();
-                serial_port->write('\x05');
+                serial_port->write(enq);
 
                 if (serial_port->waitForBytesWritten())
                 {
@@ -608,4 +688,180 @@ void PfeifferSerialclass::ManageReply()
         private_struct->process_queue[0].pending = false;
         event_timer.start();
     }
+}
+
+void PfeifferSerialclass::manageSensorStatusReply()
+{
+    QByteArray &read_buffer = private_struct->buffer;
+
+    if (read_buffer.length() == 8)
+    {
+        for (int i = 0; i < 6; i++)
+        {
+            Sensor sensor;
+
+            switch (i) {
+            case 0:
+                sensor = Sensor1;
+                break;
+            case 1:
+                sensor = Sensor2;
+                break;
+            case 2:
+                sensor = Sensor3;
+                break;
+            case 3:
+                sensor = Sensor4;
+                break;
+            case 4:
+                sensor = Sensor5;
+                break;
+            case 5:
+                sensor = Sensor6;
+                break;
+            default:
+                return;
+            }
+
+            if (read_buffer.at(i) == '2')
+            {
+                emit sensorStatus(sensor, On);
+            }
+            else if (read_buffer.at(i) == '1')
+            {
+                emit sensorStatus(sensor, Off);
+            }
+        }
+    }
+}
+
+void PfeifferSerialclass::manageSensorControlReply()
+{
+    QByteArray &read_buffer = private_struct->buffer;
+
+    if (read_buffer.length() != 20)
+    {
+        return;
+    }
+
+    Sensor sensor;
+    char mnenumonic_idd = private_struct->process_queue.first().
+            mneumonic.last();
+
+    switch (mnenumonic_idd) {
+    case 'A':
+        sensor = Sensor::Sensor1;
+        break;
+    case 'B':
+        sensor = Sensor::Sensor2;
+        break;
+    case 'C':
+        sensor = Sensor::Sensor3;
+        break;
+    case 'D':
+        sensor = Sensor::Sensor4;
+        break;
+    case 'E':
+        sensor = Sensor::Sensor5;
+        break;
+    case 'F':
+        sensor = Sensor::Sensor6;
+        break;
+    default:
+        return;
+    }
+
+    char switch_on_source_char  = read_buffer.at(0);
+    char switch_off_source_char = read_buffer.at(1);
+
+    ControllingSource switch_on_source;
+    ControllingSource switch_off_source;
+
+    switch (switch_on_source_char) {
+    case '0':
+        switch_on_source = Sensor1Control;
+        break;
+    case '1':
+        switch_on_source = Sensor2Control;
+        break;
+    case '2':
+        switch_on_source = Sensor3Control;
+        break;
+    case '3':
+        switch_on_source = Sensor4Control;
+        break;
+    case '4':
+        switch_on_source = Sensor5Control;
+        break;
+    case '5':
+        switch_on_source = Sensor6Control;
+        break;
+    case '6':
+        switch_on_source = ExternalControl;
+        break;
+    case '7':
+        switch_on_source = ManualControl;
+        break;
+    case '8':
+        switch_on_source = HotStart;
+        break;
+    default:
+        return;
+    }
+
+    switch (switch_off_source_char) {
+    case '0':
+        switch_off_source = Sensor1Control;
+        break;
+    case '1':
+        switch_off_source = Sensor2Control;
+        break;
+    case '2':
+        switch_off_source = Sensor3Control;
+        break;
+    case '3':
+        switch_off_source = Sensor4Control;
+        break;
+    case '4':
+        switch_off_source = Sensor5Control;
+        break;
+    case '5':
+        switch_off_source = Sensor6Control;
+        break;
+    case '6':
+        switch_off_source = ExternalControl;
+        break;
+    case '7':
+        switch_off_source = ManualControl;
+        break;
+    default:
+        return;
+    }
+
+    QString switch_on_value_string;
+    QString switch_off_value_string;
+
+    for (int i = 0; i < 8; i++)
+    {
+        switch_on_value_string.append(read_buffer.at(i+2));
+    }
+
+    for (int i = 0; i < 8; i++)
+    {
+        switch_off_value_string.append(read_buffer.at(i+10));
+    }
+
+    bool switch_on_cast;
+    bool switch_off_cast;
+
+    float switch_on_value = switch_on_value_string.toFloat(&switch_on_cast);
+    float switch_off_value = switch_on_value_string.toFloat(&switch_off_cast);
+
+    if (!(switch_off_cast && switch_on_cast))
+    {
+        return;
+    }
+
+    emit sensorControl(sensor,switch_on_source,switch_off_source,
+                       switch_on_value,switch_off_value);
 }

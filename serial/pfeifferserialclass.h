@@ -37,19 +37,19 @@ public:
     };
 
     enum ControllingSource {
-        Sensor1 =           0,
-        Sensor2 =           1,
-        Sensor3 =           2,
-        Sensor4 =           3,
-        Sensor5 =           4,
-        Sensor6 =           5,
+        Sensor1Control =    0,
+        Sensor2Control =    1,
+        Sensor3Control =    2,
+        Sensor4Control =    3,
+        Sensor5Control =    4,
+        Sensor6Control =    5,
         ExternalControl =   6,
-        Manual =            7,
+        ManualControl =     7,
         HotStart =          8
     };
 
 public:
-    PfeifferSerialclass(QObject *parent);
+    PfeifferSerialclass(QObject *parent = 0);
     ~PfeifferSerialclass();
 
     QString PortName() const;
@@ -76,6 +76,7 @@ public slots:
 
     void requestReadSensorStatuses();
     void requestReadSensorControl(Sensor sensor);
+    void requestReadStatusAndPressure(Sensor sensor);
 
     void requestWriteSensorStatus(int sensor_num, SensorStatus status);
     void requestWriteSensorControl(Sensor sensor, ControllingSource switch_on,
@@ -90,6 +91,10 @@ public slots:
 
 private slots:
     void ManageReply();
+
+private:
+    void manageSensorStatusReply();
+    void manageSensorControlReply();
 };
 
 #endif // PFEIFFERSERIALCLASS_H

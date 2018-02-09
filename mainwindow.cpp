@@ -91,6 +91,8 @@ MainWindow::MainWindow(QWidget *parent) :
     recipes_page.setEurothermSerialClass(&eurotherm_serial);
     logs_page.setEurothermSerialClass(&eurotherm_serial);
 
+    pfeiffer_serial.connectDevice();
+
     global_timer.setInterval(1000);
     global_timer.setSingleShot(false);
     global_timer.start();
