@@ -359,12 +359,8 @@ EurothermSerialClass::~EurothermSerialClass()
 
 void EurothermSerialClass::connectDevice()
 {
+    qDebug() << "here";
     QModbusRtuSerialMaster *modbus_client = private_struct->modbus_client;
-
-    if (private_struct->reconnect_timer.isActive())
-    {
-        return;
-    }
 
     if (modbus_client == nullptr)
     {
@@ -1020,6 +1016,7 @@ void EurothermSerialClass::requestWriteAlarmHysteresis(const int server_address,
 void EurothermSerialClass::ManageReply()
 {
     QModbusReply *reply = dynamic_cast<QModbusReply*>(sender());
+    QModbusRtuSerialMaster *modbus_client = private_struct->modbus_client;
 
     if (reply == nullptr)
     {
@@ -1027,6 +1024,11 @@ void EurothermSerialClass::ManageReply()
         private_struct->failed_attemps++;
         private_struct->event_timer.start();
         return;
+    }
+
+    if (modbus_client == nullptr)
+    {
+       return;
     }
 
     QModbusDataUnit data_unit = reply->result();
@@ -1570,6 +1572,11 @@ void EurothermSerialClass::ManageReply()
 void EurothermSerialClass::processModbusRequestQueue()
 {
     QModbusRtuSerialMaster *modbus_client = private_struct->modbus_client;
+
+    if (modbus_client == nullptr)
+    {
+       return;
+    }
 
     if (private_struct->failed_attemps >= MAX_FAILED_ATTEMPS)
     {
