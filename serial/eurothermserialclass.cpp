@@ -351,10 +351,7 @@ EurothermSerialClass::~EurothermSerialClass()
     if (private_struct->modbus_client != nullptr)
     {
         private_struct->modbus_client->disconnectDevice();
-
-        while (private_struct->modbus_client->state() !=
-               QModbusDevice::UnconnectedState) {
-        }
+        private_struct->modbus_client->deleteLater();
     }
 
     delete private_struct;
@@ -372,6 +369,7 @@ void EurothermSerialClass::connectDevice()
     if (modbus_client == nullptr)
     {
         modbus_client = new QModbusRtuSerialMaster(this);
+        private_struct->modbus_client = modbus_client;
         modbus_client->setTimeout(200);
         modbus_client->setNumberOfRetries(3);
     }
@@ -431,7 +429,7 @@ void EurothermSerialClass::disconnectDevice()
     private_struct->event_timer.stop();
     private_struct->reconnect_timer.stop();
 
-    modbus_client = nullptr;
+    private_struct->modbus_client = nullptr;
 }
 
 QString EurothermSerialClass::serialPortName() const
