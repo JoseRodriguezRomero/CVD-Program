@@ -107,15 +107,15 @@ void MainWindow::openSerialSettingsWindow()
 {
     serial_settings_window.refresh();
     serial_settings_window.setEurothermPortName(
-                eurotherm_serial.SerialPortName());
+                eurotherm_serial.serialPortName());
     serial_settings_window.setEurothermPortBaudRate(
-                eurotherm_serial.BaudRate());
+                eurotherm_serial.baudRate());
     serial_settings_window.setEurothermPortParity(
-                eurotherm_serial.Parity());
+                eurotherm_serial.parity());
     serial_settings_window.setEurothermPortStopBits(
-                eurotherm_serial.StopBits());
+                eurotherm_serial.stopBits());
     serial_settings_window.setEurothermPortDataBits(
-                eurotherm_serial.DataBits());
+                eurotherm_serial.dataBits());
 
     serial_settings_window.show();
 }

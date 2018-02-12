@@ -222,6 +222,17 @@ struct ModbusRequestStruct {
 struct EurothermSerialStruct {
     QVector<ModbusRequestStruct> process_queue;
     uint failed_attemps;
+
+    QString serial_port_name;
+    QSerialPort::BaudRate baud_rate;
+    QSerialPort::Parity parity;
+    QSerialPort::StopBits stop_bits;
+    QSerialPort::DataBits data_bits;
+
+    QTimer reconnect_timer;
+    QTimer event_timer;
+
+    QModbusRtuSerialMaster *modbus_client;
 };
 
 void add16BitRequestToQueue(EurothermSerialClass *parent,
@@ -311,34 +322,37 @@ void addFloatRequestToQueue(EurothermSerialClass *parent,
 EurothermSerialClass::EurothermSerialClass(QObject *parent) :
     QObject(parent)
 {
-    serial_port_name = "COM8";
-    baud_rate = QSerialPort::Baud19200;
-    parity = QSerialPort::NoParity;
-    stop_bits = QSerialPort::OneStop;
-    data_bits = QSerialPort::Data8;
-
-    reconnect_timer.setInterval(1000);
-    reconnect_timer.setSingleShot(false);
-
-    event_timer.setInterval(100);
-    event_timer.setSingleShot(false);
-
-    connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
-    connect(&event_timer,SIGNAL(timeout()),
-            this,SLOT(processModbusRequestQueue()));
-
     private_struct = new EurothermSerialStruct;
+    private_struct->serial_port_name = "COM8";
+    private_struct->baud_rate = QSerialPort::Baud19200;
+    private_struct->parity = QSerialPort::NoParity;
+    private_struct->stop_bits = QSerialPort::OneStop;
+    private_struct->data_bits = QSerialPort::Data8;
+
+    private_struct->reconnect_timer.setInterval(1000);
+    private_struct->reconnect_timer.setSingleShot(false);
+
+    private_struct->event_timer.setInterval(100);
+    private_struct->event_timer.setSingleShot(false);
+
+    QTimer *reconnect_timer = &(private_struct->reconnect_timer);
+    QTimer *event_timer = &(private_struct->event_timer);
+
+    connect(reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
+    connect(event_timer,SIGNAL(timeout()),this,
+            SLOT(processModbusRequestQueue()));
+
     private_struct->failed_attemps = 0;
-    modbus_client = nullptr;            // never forgetti mom's spaghetti
+    private_struct->modbus_client = nullptr;  // never forgetti mom's spaghetti
 }
 
 EurothermSerialClass::~EurothermSerialClass()
 {
-    if (modbus_client != nullptr)
+    if (private_struct->modbus_client != nullptr)
     {
-        modbus_client->disconnectDevice();
+        private_struct->modbus_client->disconnectDevice();
 
-        while (modbus_client->state() !=
+        while (private_struct->modbus_client->state() !=
                QModbusDevice::UnconnectedState) {
         }
     }
@@ -348,7 +362,9 @@ EurothermSerialClass::~EurothermSerialClass()
 
 void EurothermSerialClass::connectDevice()
 {
-    if (reconnect_timer.isActive())
+    QModbusRtuSerialMaster *modbus_client = private_struct->modbus_client;
+
+    if (private_struct->reconnect_timer.isActive())
     {
         return;
     }
@@ -366,15 +382,19 @@ void EurothermSerialClass::connectDevice()
     }
 
     modbus_client->setConnectionParameter(
-                QModbusDevice::SerialPortNameParameter,serial_port_name);
+                QModbusDevice::SerialPortNameParameter,private_struct->
+                serial_port_name);
     modbus_client->setConnectionParameter(
-                QModbusDevice::SerialBaudRateParameter,baud_rate);
+                QModbusDevice::SerialBaudRateParameter,private_struct->
+                baud_rate);
     modbus_client->setConnectionParameter(
-                QModbusDevice::SerialParityParameter,parity);
+                QModbusDevice::SerialParityParameter,private_struct->parity);
     modbus_client->setConnectionParameter(
-                QModbusDevice::SerialStopBitsParameter,stop_bits);
+                QModbusDevice::SerialStopBitsParameter,private_struct->
+                stop_bits);
     modbus_client->setConnectionParameter(
-                QModbusDevice::SerialDataBitsParameter,data_bits);
+                QModbusDevice::SerialDataBitsParameter,private_struct->
+                data_bits);
 
     modbus_client->connectDevice();
 
@@ -386,18 +406,20 @@ void EurothermSerialClass::connectDevice()
 
     if (modbus_client->state() == QModbusDevice::ConnectedState)
     {
-        reconnect_timer.stop();
-        event_timer.start();
+        private_struct->reconnect_timer.stop();
+        private_struct->event_timer.start();
     }
     else
     {
-        event_timer.stop();
-        reconnect_timer.start();
+        private_struct->event_timer.stop();
+        private_struct->reconnect_timer.start();
     }
 }
 
 void EurothermSerialClass::disconnectDevice()
 {
+    QModbusRtuSerialMaster *modbus_client = private_struct->modbus_client;
+
     if (modbus_client == nullptr)
     {
         return;
@@ -406,39 +428,41 @@ void EurothermSerialClass::disconnectDevice()
     modbus_client->disconnectDevice();
     modbus_client->deleteLater();
 
-    event_timer.stop();
-    reconnect_timer.stop();
+    private_struct->event_timer.stop();
+    private_struct->reconnect_timer.stop();
 
     modbus_client = nullptr;
 }
 
-QString EurothermSerialClass::SerialPortName() const
+QString EurothermSerialClass::serialPortName() const
 {
-    return serial_port_name;
+    return private_struct->serial_port_name;
 }
 
-QSerialPort::BaudRate EurothermSerialClass::BaudRate() const
+QSerialPort::BaudRate EurothermSerialClass::baudRate() const
 {
-    return baud_rate;
+    return private_struct->baud_rate;
 }
 
-QSerialPort::Parity EurothermSerialClass::Parity() const
+QSerialPort::Parity EurothermSerialClass::parity() const
 {
-    return parity;
+    return private_struct->parity;
 }
 
-QSerialPort::StopBits EurothermSerialClass::StopBits() const
+QSerialPort::StopBits EurothermSerialClass::stopBits() const
 {
-    return stop_bits;
+    return private_struct->stop_bits;
 }
 
-QSerialPort::DataBits EurothermSerialClass::DataBits() const
+QSerialPort::DataBits EurothermSerialClass::dataBits() const
 {
-    return data_bits;
+    return private_struct->data_bits;
 }
 
 bool EurothermSerialClass::checkState()
 {
+    QModbusRtuSerialMaster *modbus_client = private_struct->modbus_client;
+
     QString reply_string;
     bool status = false;
 
@@ -502,27 +526,27 @@ bool EurothermSerialClass::checkState()
 
 void EurothermSerialClass::setSerialPortName(const QString port_name)
 {
-    this->serial_port_name = port_name;
+    private_struct->serial_port_name = port_name;
 }
 
 void EurothermSerialClass::setBaudRate(const QSerialPort::BaudRate baud_rate)
 {
-    this->baud_rate = baud_rate;
+    private_struct->baud_rate = baud_rate;
 }
 
 void EurothermSerialClass::setParity(const QSerialPort::Parity parity)
 {
-    this->parity = parity;
+    private_struct->parity = parity;
 }
 
 void EurothermSerialClass::setStopBits(const QSerialPort::StopBits stop_bits)
 {
-    this->stop_bits = stop_bits;
+    private_struct->stop_bits = stop_bits;
 }
 
 void EurothermSerialClass::setDataBits(const QSerialPort::DataBits data_bits)
 {
-    this->data_bits = data_bits;
+    private_struct->data_bits = data_bits;
 }
 
 void EurothermSerialClass::requestReadPVInputValue(const int server_address)
@@ -1003,7 +1027,7 @@ void EurothermSerialClass::ManageReply()
     {
         private_struct->process_queue[0].pending = false;
         private_struct->failed_attemps++;
-        event_timer.start();
+        private_struct->event_timer.start();
         return;
     }
 
@@ -1015,7 +1039,7 @@ void EurothermSerialClass::ManageReply()
         reply->deleteLater();
         private_struct->process_queue[0].pending = false;
         private_struct->failed_attemps++;
-        event_timer.start();
+        private_struct->event_timer.start();
         return;
     }
 
@@ -1050,6 +1074,8 @@ void EurothermSerialClass::ManageReply()
         start_address >>= 1;
     }
 
+    private_struct->process_queue[0].pending = false;
+
     switch (start_address)
     {
     case PV_IN:
@@ -1071,8 +1097,20 @@ void EurothermSerialClass::ManageReply()
         emit ProportionalBand(server_address, value_float32);
         break;
     case CTRL_A:
-        emit ControlAction(server_address,
-                           static_cast<ControlActions>(value_uint8));
+        ControlAction control_action;
+
+        switch (value_uint8) {
+        case 0:
+            control_action = ReverseActing;
+            break;
+        case 1:
+            control_action = DirectActing;
+            break;
+        default:
+            return;
+        }
+
+        emit CurrentControlAction(server_address,control_action);
         break;
     case TI:
         emit IntegralTime(server_address, value_float32);
@@ -1533,11 +1571,13 @@ void EurothermSerialClass::ManageReply()
 
 void EurothermSerialClass::processModbusRequestQueue()
 {
+    QModbusRtuSerialMaster *modbus_client = private_struct->modbus_client;
+
     if (private_struct->failed_attemps >= MAX_FAILED_ATTEMPS)
     {
         disconnectDevice();
-        event_timer.stop();
-        reconnect_timer.start();
+        private_struct->event_timer.stop();
+        private_struct->reconnect_timer.start();
         private_struct->failed_attemps = 0;
         return;
     }
@@ -1545,8 +1585,8 @@ void EurothermSerialClass::processModbusRequestQueue()
     if (!checkState())
     {
         disconnectDevice();
-        event_timer.stop();
-        reconnect_timer.start();
+        private_struct->event_timer.stop();
+        private_struct->reconnect_timer.start();
         return;
     }
 

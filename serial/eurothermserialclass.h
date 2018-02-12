@@ -17,16 +17,14 @@ class EurothermSerialClass : public QObject
     Q_OBJECT
 private:
     EurothermSerialStruct *private_struct;
-    QTimer reconnect_timer;
-    QTimer event_timer;
 
 public:
-    enum ControlActions {
-        ReverseActing   = 0,
-        DirectActing    = 1
+    enum ControlAction {
+        ReverseActing,
+        DirectActing
     };
 
-    enum BaudRates {
+    enum BaudRate {
         Baud9600        = 0,
         Baud19200       = 1,
         Baud4800        = 2,
@@ -41,7 +39,7 @@ public:
         Alarm4
     };
 
-    enum Parities {
+    enum Parity {
         NoParity        = 0,
         EvenParity      = 1,
         OddParity       = 2
@@ -59,24 +57,15 @@ public:
         End
     };
 
-private:
-    QModbusRtuSerialMaster *modbus_client;
-
-    QString serial_port_name;
-    QSerialPort::BaudRate baud_rate;
-    QSerialPort::Parity parity;
-    QSerialPort::StopBits stop_bits;
-    QSerialPort::DataBits data_bits;
-
 public:
     explicit EurothermSerialClass(QObject *parent = 0);
     ~EurothermSerialClass();
 
-    QString SerialPortName() const;
-    QSerialPort::BaudRate BaudRate() const;
-    QSerialPort::Parity Parity() const;
-    QSerialPort::StopBits StopBits() const;
-    QSerialPort::DataBits DataBits() const;
+    QString serialPortName() const;
+    QSerialPort::BaudRate baudRate() const;
+    QSerialPort::Parity parity() const;
+    QSerialPort::StopBits stopBits() const;
+    QSerialPort::DataBits dataBits() const;
 
 public slots:
     void setSerialPortName(const QString port_name);
@@ -150,7 +139,7 @@ signals:
     void WorkingOutput(const int server_address, const float value);
     void WorkingSetpoint(const int server_address, const float setpoint);
     void ProportionalBand(const int server_address, const float prop_band);
-    void ControlAction(const int server_address, const ControlActions control_action);
+    void CurrentControlAction(const int server_address, const ControlAction control_action);
     void IntegralTime(const int server_address, const float int_time);
     void DerivativeTime(const int server_address, const float dev_time);
     void InputRangeLowLimit(const int server_address, const float low_range);
