@@ -11,7 +11,7 @@ class BaseSerialClass : public QObject
 {
     Q_OBJECT
 protected:
-    QVector<void*> request_queue;   // lol - this templating ain't allowed
+    QVector<void*> request_queue;   // lol - templating ain't allowed
                                     // for qobjects.....
 
     QString port_name;
@@ -54,6 +54,7 @@ public slots:
     virtual void disconnectDevice() = 0;
 
     virtual bool checkState() = 0;
+    void clearRequestQueue();
 
     void stopEventTimer(const bool stop = true);
     void stopReconnectTimer(const bool stop = true);

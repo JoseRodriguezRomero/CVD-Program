@@ -70,6 +70,17 @@ void BaseSerialClass::setDataBits(const QSerialPort::DataBits
     this->data_bits = data_bits;
 }
 
+void BaseSerialClass::clearRequestQueue()
+{
+    int len = request_queue.length();
+    for (int i = 0; i < len; i++)
+    {
+        delete request_queue.at(i);
+    }
+
+    request_queue.clear();
+}
+
 bool BaseSerialClass::deviceDisconnected() const
 {
     return !deviceConnected();
@@ -147,17 +158,20 @@ void BaseSerialClass::eventLoop()
         return;
     }
 
-    if (processPending())
-    {
-        return;
-    }
-
     if (request_queue.length() < 1)
     {
         return;
     }
 
-    processRequestQueue();
+    if (processPending())
+    {
+        manageReply();
+    }
+    else
+    {
+        processRequestQueue();
+    }
+
 
     if (failed_attempts >= MAX_FAILED_ATTEMPTS)
     {

@@ -298,10 +298,11 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     stop_bits = QSerialPort::OneStop;
     data_bits = QSerialPort::Data8;
 
-    event_timer.setInterval(100);
+    event_timer.setInterval(30);
     reconnect_timer.setInterval(1000);
 
     modbus_client = nullptr;  // never forgetti mom's spaghetti
+    reply = nullptr;
 }
 
 EurothermSerialClass::~EurothermSerialClass()
@@ -390,6 +391,7 @@ void EurothermSerialClass::disconnectDevice()
     reconnect_timer.stop();
 
     modbus_client = nullptr;
+    reply = nullptr;
 }
 
 bool EurothermSerialClass::checkState()
@@ -911,20 +913,27 @@ void EurothermSerialClass::requestWriteAlarmHysteresis(const int server_address,
 
 void EurothermSerialClass::manageReply()
 {
-    QModbusReply *reply = dynamic_cast<QModbusReply*>(sender());
     EurothermRequestStruct *request =static_cast<EurothermRequestStruct*>(
                 request_queue.first());
-    request->pending = false;
 
-    if (reply == nullptr)
+    if (reply == nullptr || modbus_client == nullptr)
     {
         request->pending = false;
-        failed_attempts++;
         return;
     }
 
-    if (modbus_client == nullptr)
+    if (!(reply->isFinished()))
     {
+        request->pending = true;
+        return;
+    }
+
+    if (reply->error() != QModbusDevice::NoError)
+    {
+        request->pending = false;
+        reply->deleteLater();
+        reply = nullptr;
+        failed_attempts++;
         return;
     }
 
@@ -1453,6 +1462,7 @@ void EurothermSerialClass::manageReply()
     }
 
     reply->deleteLater();
+    reply = nullptr;
     delete request;
     request_queue.remove(0);
 
@@ -1497,8 +1507,6 @@ void EurothermSerialClass::processRequestQueue()
     data_unit.setStartAddress(start_address);
     data_unit.setValueCount(request->values.length());
 
-    QModbusReply *reply = nullptr;
-
     switch (request->req_type)
     {
     case ReadRequest:
@@ -1508,17 +1516,5 @@ void EurothermSerialClass::processRequestQueue()
         data_unit.setValues(request->values);
         reply = modbus_client->sendWriteRequest(data_unit,server_address);
         break;
-    }
-
-    if (reply->isFinished())
-    {
-        if (reply->error() == QModbusDevice::NoError)
-        {
-            manageReply();
-        }
-    }
-    else
-    {
-        QObject::connect(reply,SIGNAL(finished()),this,SLOT(manageReply()));
     }
 }

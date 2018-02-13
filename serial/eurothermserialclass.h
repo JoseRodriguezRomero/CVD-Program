@@ -17,6 +17,7 @@ class EurothermSerialClass : public BaseSerialClass
     Q_OBJECT
 private:
     QModbusRtuSerialMaster *modbus_client;
+    QModbusReply *reply;
 
 public:
     enum ControlAction {
