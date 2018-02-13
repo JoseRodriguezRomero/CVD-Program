@@ -10,13 +10,13 @@
 #include <QModbusDataUnit>
 #include <QModbusRtuSerialMaster>
 
-struct EurothermSerialStruct;
+#include "baseserialclass.h"
 
-class EurothermSerialClass : public QObject
+class EurothermSerialClass : public BaseSerialClass
 {
     Q_OBJECT
 private:
-    EurothermSerialStruct *private_struct;
+    QModbusRtuSerialMaster *modbus_client;
 
 public:
     enum ControlAction {
@@ -61,19 +61,10 @@ public:
     explicit EurothermSerialClass(QObject *parent = 0);
     ~EurothermSerialClass();
 
-    QString serialPortName() const;
-    QSerialPort::BaudRate baudRate() const;
-    QSerialPort::Parity parity() const;
-    QSerialPort::StopBits stopBits() const;
-    QSerialPort::DataBits dataBits() const;
+    bool deviceConnected() const;
+    bool deviceDisconnected() const;
 
 public slots:
-    void setSerialPortName(const QString port_name);
-    void setBaudRate(const QSerialPort::BaudRate baud_rate);
-    void setParity(const QSerialPort::Parity parity);
-    void setStopBits(const QSerialPort::StopBits stop_bits);
-    void setDataBits(const QSerialPort::DataBits data_bits);
-
     void requestReadPVInputValue(const int server_address);
     void requestReadTargetSetpoint(const int server_address);
     void requestReadManualOutputValue(const int server_address);
@@ -125,12 +116,14 @@ public slots:
     void requestWriteSetpointRateLimitValue(const int server_address, const float sp_rat);
     void requestWriteAlarmHysteresis(const int server_address, const Alarm alarm, const float a_hys);
 
-    void processModbusRequestQueue();
+    void processRequestQueue();
+    void manageReply();
 
     void connectDevice();
     void disconnectDevice();
 
     bool checkState();
+    bool processPending() const;
 
 signals:
     void PVInputValue(const int server_address, const float value);
@@ -174,12 +167,6 @@ signals:
     void TimeRampRunningStatus(const int server_address, const bool status);                // status == true -> active
     void RemoteSPFailStatus(const int server_address, const bool status);                   // status == true -> active
     void AutotuneStatus(const int server_address, const bool status);                       // status == true -> active
-
-    void ErrorString(const QString &error_string, bool status);
-    void deviceConnected(QModbusDevice::State);
-
-private slots:
-    void ManageReply();
 };
 
 #endif // EUROTHERMSERIALCLASS_H

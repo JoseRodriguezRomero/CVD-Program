@@ -84,7 +84,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&eurotherm_serial,SIGNAL(ErrorString(QString,bool)),
             &eurotherm_status_string,SLOT(setStatusLabel(QString,bool)));
 
-    eurotherm_serial.connectDevice();
+    eurotherm_serial.startEventLoop();
     manual_control_page.setEurothermSerialClasss(&eurotherm_serial);
 
     manual_control_page.setEurothermSerialClasss(&eurotherm_serial);
