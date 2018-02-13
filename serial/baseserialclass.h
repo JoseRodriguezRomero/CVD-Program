@@ -11,7 +11,8 @@ class BaseSerialClass : public QObject
 {
     Q_OBJECT
 protected:
-    QVector<void*> request_queue; // lol
+    QVector<void*> request_queue;   // lol - this templating ain't allowed
+                                    // for qobjects.....
 
     QString port_name;
     QSerialPort::BaudRate baud_rate;
