@@ -43,46 +43,32 @@ MainWindow::MainWindow(QWidget *parent) :
     serial_settings_window.hide();
 
     connect(exit,SIGNAL(clicked(bool)),this,SLOT(close()));
-    connect(serial_settings,SIGNAL(clicked(bool)),
-            this,SLOT(openSerialSettingsWindow()));
+    connect(serial_settings,SIGNAL(clicked(bool)),this,SLOT(openSerialSettingsWindow()));
 
-    connect(&serial_settings_window,SIGNAL(changeEurothermPortName(QString)),
-            &eurotherm_serial,SLOT(setSerialPortName(QString)));
-    connect(&serial_settings_window,SIGNAL(changeEurothermPortBaudRate(
-                                              QSerialPort::BaudRate)),
-            &eurotherm_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
-    connect(&serial_settings_window,SIGNAL(changeEurothermPortParity(
-                                              QSerialPort::Parity)),
-            &eurotherm_serial,SLOT(setParity(QSerialPort::Parity)));
-    connect(&serial_settings_window,SIGNAL(changeEurothermPortStopBits(
-                                              QSerialPort::StopBits)),
-            &eurotherm_serial,SLOT(setStopBits(QSerialPort::StopBits)));
-    connect(&serial_settings_window,SIGNAL(changeEurothermPortDataBits(
-                                              QSerialPort::DataBits)),
-            &eurotherm_serial,SLOT(setDataBits(QSerialPort::DataBits)));
+    connect(&global_timer,SIGNAL(timeout()),this,SLOT(UpdateWorkingSetPoints()));
 
-    connect(&global_timer,SIGNAL(timeout()),
-            this,SLOT(UpdateWorkingSetPoints()));
+    connect(&recipes_page,SIGNAL(RecipeStarted(bool)),&manual_control_page,SLOT(setBlockedCommands(bool)));
+    connect(&recipes_page,SIGNAL(RecipeStarted(bool)),serial_settings,SLOT(setDisabled(bool)));
+    connect(&recipes_page,SIGNAL(RecipeStarted(bool)),&logs_page,SLOT(startLoging(bool)));
 
-    connect(&recipes_page,SIGNAL(RecipeStarted(bool)),&manual_control_page,
-            SLOT(setBlockedCommands(bool)));
-    connect(&recipes_page,SIGNAL(RecipeStarted(bool)),serial_settings,
-            SLOT(setDisabled(bool)));
-    connect(&recipes_page,SIGNAL(RecipeStarted(bool)),&logs_page,
-            SLOT(startLoging(bool)));
+    connect(&recipes_page,SIGNAL(RecipePaused(bool)),&manual_control_page,SLOT(setUnBlockedCommands(bool)));
+    connect(&recipes_page,SIGNAL(RecipePaused(bool)),serial_settings,SLOT(setEnabled(bool)));
 
-    connect(&recipes_page,SIGNAL(RecipePaused(bool)),&manual_control_page,
-            SLOT(setUnBlockedCommands(bool)));
-    connect(&recipes_page,SIGNAL(RecipePaused(bool)),serial_settings,
-            SLOT(setEnabled(bool)));
+    connect(&recipes_page,SIGNAL(RecipeStarted(bool)),this,SLOT(onRecipeStarted(bool)));
+    connect(&recipes_page,SIGNAL(RecipePaused(bool)),this,SLOT(onRecipePaused(bool)));
 
-    connect(&recipes_page,SIGNAL(RecipeStarted(bool)),this,
-            SLOT(onRecipeStarted(bool)));
-    connect(&recipes_page,SIGNAL(RecipePaused(bool)),this,
-            SLOT(onRecipePaused(bool)));
+    connect(&eurotherm_serial,SIGNAL(ErrorString(QString,bool)),&eurotherm_status_string,SLOT(setStatusLabel(QString,bool)));
 
-    connect(&eurotherm_serial,SIGNAL(ErrorString(QString,bool)),
-            &eurotherm_status_string,SLOT(setStatusLabel(QString,bool)));
+    connect(&serial_settings_window,SIGNAL(changePortName(SerialSettingsWindow::Device,QString)),
+            this,SLOT(setPortName(SerialSettingsWindow::Device,QString)));
+    connect(&serial_settings_window,SIGNAL(changeBaudRate(SerialSettingsWindow::Device,QSerialPort::BaudRate)),
+            this,SLOT(setBaudRate(SerialSettingsWindow::Device,QSerialPort::BaudRate)));
+    connect(&serial_settings_window,SIGNAL(changeParity(SerialSettingsWindow::Device,QSerialPort::Parity)),
+            this,SLOT(setParity(SerialSettingsWindow::Device,QSerialPort::Parity)));
+    connect(&serial_settings_window,SIGNAL(changeStopBits(SerialSettingsWindow::Device,QSerialPort::StopBits)),
+            this,SLOT(setStopBits(SerialSettingsWindow::Device,QSerialPort::StopBits)));
+    connect(&serial_settings_window,SIGNAL(changeDataBits(SerialSettingsWindow::Device,QSerialPort::DataBits)),
+            this,SLOT(setDataBits(SerialSettingsWindow::Device,QSerialPort::DataBits)));
 
     eurotherm_serial.startEventLoop();
     manual_control_page.setEurothermSerialClasss(&eurotherm_serial);
@@ -103,19 +89,142 @@ MainWindow::~MainWindow()
     eurotherm_serial.disconnectDevice();
 }
 
+void MainWindow::setPortName(const SerialSettingsWindow::Device device,
+                             const QString &port_name)
+{
+    BaseSerialClass *serial_class;
+
+    switch (device) {
+    case SerialSettingsWindow::Eurotherm:
+        serial_class = &eurotherm_serial;
+        break;
+    case SerialSettingsWindow::Pfeiffer:
+        serial_class = &pfeiffer_serial;
+        break;
+    case SerialSettingsWindow::MKS:
+        return;
+        break;
+    default:
+        return;
+    }
+
+    serial_class->setSerialPortName(port_name);
+}
+
+void MainWindow::setBaudRate(const SerialSettingsWindow::Device device,
+                             const QSerialPort::BaudRate baud_rate)
+{
+    BaseSerialClass *serial_class;
+
+    switch (device) {
+    case SerialSettingsWindow::Eurotherm:
+        serial_class = &eurotherm_serial;
+        break;
+    case SerialSettingsWindow::Pfeiffer:
+        serial_class = &pfeiffer_serial;
+        break;
+    case SerialSettingsWindow::MKS:
+        return;
+        break;
+    default:
+        return;
+    }
+
+    serial_class->setBaudRate(baud_rate);
+}
+
+void MainWindow::setStopBits(const SerialSettingsWindow::Device device,
+                             const QSerialPort::StopBits stop_bits)
+{
+    BaseSerialClass *serial_class;
+
+    switch (device) {
+    case SerialSettingsWindow::Eurotherm:
+        serial_class = &eurotherm_serial;
+        break;
+    case SerialSettingsWindow::Pfeiffer:
+        serial_class = &pfeiffer_serial;
+        break;
+    case SerialSettingsWindow::MKS:
+        return;
+        break;
+    default:
+        return;
+    }
+
+    serial_class->setStopBits(stop_bits);
+}
+
+void MainWindow::setDataBits(const SerialSettingsWindow::Device device,
+                             const QSerialPort::DataBits data_bits)
+{
+    BaseSerialClass *serial_class;
+
+    switch (device) {
+    case SerialSettingsWindow::Eurotherm:
+        serial_class = &eurotherm_serial;
+        break;
+    case SerialSettingsWindow::Pfeiffer:
+        serial_class = &pfeiffer_serial;
+        break;
+    case SerialSettingsWindow::MKS:
+        return;
+        break;
+    default:
+        return;
+    }
+
+    serial_class->setDataBits(data_bits);
+}
+
+void MainWindow::setParity(const SerialSettingsWindow::Device device,
+                           const QSerialPort::Parity parity)
+{
+    BaseSerialClass *serial_class;
+
+    switch (device) {
+    case SerialSettingsWindow::Eurotherm:
+        serial_class = &eurotherm_serial;
+        break;
+    case SerialSettingsWindow::Pfeiffer:
+        serial_class = &pfeiffer_serial;
+        break;
+    case SerialSettingsWindow::MKS:
+        return;
+        break;
+    default:
+        return;
+    }
+
+    serial_class->setParity(parity);
+}
+
 void MainWindow::openSerialSettingsWindow()
 {
+    QVector<SerialSettingsWindow::Device> device_id;
+    QVector<BaseSerialClass*> devices;
+
+    device_id.append(SerialSettingsWindow::Eurotherm);
+    device_id.append(SerialSettingsWindow::Pfeiffer);
+
+    devices.append(&eurotherm_serial);
+    devices.append(&pfeiffer_serial);
+
     serial_settings_window.refresh();
-    serial_settings_window.setEurothermPortName(
-                eurotherm_serial.serialPortName());
-    serial_settings_window.setEurothermPortBaudRate(
-                eurotherm_serial.baudRate());
-    serial_settings_window.setEurothermPortParity(
-                eurotherm_serial.parity());
-    serial_settings_window.setEurothermPortStopBits(
-                eurotherm_serial.stopBits());
-    serial_settings_window.setEurothermPortDataBits(
-                eurotherm_serial.dataBits());
+
+    for (int i = 0; i < device_id.length(); i++)
+    {
+        serial_settings_window.setPortName(device_id.at(i),
+                                           devices.at(i)->serialPortName());
+        serial_settings_window.setBaudRate(device_id.at(i),
+                                           devices.at(i)->baudRate());
+        serial_settings_window.setParity(device_id.at(i),
+                                         devices.at(i)->parity());
+        serial_settings_window.setStopBits(device_id.at(i),
+                                           devices.at(i)->stopBits());
+        serial_settings_window.setDataBits(device_id.at(i),
+                                           devices.at(i)->dataBits());
+    }
 
     serial_settings_window.show();
 }
@@ -127,8 +236,6 @@ void MainWindow::UpdateWorkingSetPoints()
         eurotherm_serial.requestReadPVInputValue(i+1);
         eurotherm_serial.requestReadTargetSetpoint(i+1);
     }
-
-    global_timer.start();
 }
 
 void MainWindow::UpdateWorkingValues()

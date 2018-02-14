@@ -40,12 +40,12 @@ public slots:
     QSerialPort::DataBits dataBits() const;
     QSerialPort::FlowControl flowControl() const;
 
-    void setSerialPortName(const QString &port_name);
-    void setParity(const QSerialPort::Parity port_parity);
-    void setBaudRate(const QSerialPort::BaudRate baud_rate);
-    void setStopBits(const QSerialPort::StopBits stop_bits);
-    void setDataBits(const QSerialPort::DataBits data_bits);
-    void setFlowControl(const QSerialPort::FlowControl flow_control);
+    virtual void setSerialPortName(const QString &port_name);
+    virtual void setParity(const QSerialPort::Parity port_parity);
+    virtual void setBaudRate(const QSerialPort::BaudRate baud_rate);
+    virtual void setStopBits(const QSerialPort::StopBits stop_bits);
+    virtual void setDataBits(const QSerialPort::DataBits data_bits);
+    virtual void setFlowControl(const QSerialPort::FlowControl flow_control);
 
     virtual bool processPending() const = 0;
 

@@ -19,6 +19,13 @@
 class SerialSettingsWindow : public QMainWindow
 {
     Q_OBJECT
+public:
+    enum Device {
+        Eurotherm,
+        Pfeiffer,
+        MKS
+    };
+
 private:
     QComboBox *eurotherm_port_name;
     QComboBox *eurotherm_baud_rate;
@@ -44,53 +51,24 @@ private:
 public:
     SerialSettingsWindow(QWidget *parent = 0);
 
-    void setEurothermPortName(const QString &port_name);
-    void setEurothermPortBaudRate(QSerialPort::BaudRate baud_rate);
-    void setEurothermPortParity(QSerialPort::Parity parity);
-    void setEurothermPortStopBits(QSerialPort::StopBits stop_bits);
-    void setEurothermPortDataBits(QSerialPort::DataBits data_bits);
-
-    void setMKSPortName(const QString &port_name);
-    void setMKSPortBaudRate(QSerialPort::BaudRate baud_rate);
-    void setMKSPortParity(QSerialPort::Parity parity);
-    void setMKSPortStopBits(QSerialPort::StopBits stop_bits);
-    void setMKSPortDataBits(QSerialPort::DataBits data_bits);
-
-    void setPfeifferPortName(const QString &port_name);
-    void setPfeifferPortBaudRate(QSerialPort::BaudRate baud_rate);
-    void setPfeifferPortParity(QSerialPort::Parity parity);
-    void setPfeifferPortStopBits(QSerialPort::StopBits stop_bits);
-    void setPfeifferPortDataBits(QSerialPort::DataBits data_bits);
+    void setPortName(const Device device, const QString &port_name);
+    void setBaudRate(const Device device, const QSerialPort::BaudRate baud_rate);
+    void setStopBits(const Device device, const QSerialPort::StopBits stop_bits);
+    void setDataBits(const Device device, const QSerialPort::DataBits data_bits);
+    void setParity(const Device device, const QSerialPort::Parity parity);
 
 public slots:
     void apply();
     void refresh();
 
-    void updateEurothermProductIdentifier();
+    void updateProductIdentifiers();
 
 signals:
-    void changeEurothermPortName(const QString &port_name);
-    void changeEurothermPortBaudRate(QSerialPort::BaudRate baud_rate);
-    void changeEurothermPortParity(QSerialPort::Parity parity);
-    void changeEurothermPortStopBits(QSerialPort::StopBits stop_bits);
-    void changeEurothermPortDataBits(QSerialPort::DataBits data_bits);
-
-    void changeMKSPortName(const QString &port_name);
-    void changeMKSPortBaudRate(QSerialPort::BaudRate baud_rate);
-    void changeMKSPortParity(QSerialPort::Parity parity);
-    void changeMKSPortStopBits(QSerialPort::StopBits stop_bits);
-    void changeMKSPortDataBits(QSerialPort::DataBits data_bits);
-
-    void changePfeifferPortName(const QString &port_name);
-    void changePfeifferPortBaudRate(QSerialPort::BaudRate baud_rate);
-    void changePfeifferPortParity(QSerialPort::Parity parity);
-    void changePfeifferPortStopBits(QSerialPort::StopBits stop_bits);
-    void changePfeifferPortDataBits(QSerialPort::DataBits data_bits);
-
-private:
-    void emitEurothermSerialInfo();
-    void emitMKSSerialInfo();
-    void emitPfeifferSerialInfo();
+    void changePortName(const SerialSettingsWindow::Device device, const QString &port_name);
+    void changeBaudRate(const SerialSettingsWindow::Device device, const QSerialPort::BaudRate baud_rate);
+    void changeStopBits(const SerialSettingsWindow::Device device, const QSerialPort::StopBits stop_bits);
+    void changeDataBits(const SerialSettingsWindow::Device device, const QSerialPort::DataBits data_bits);
+    void changeParity(const SerialSettingsWindow::Device device, const QSerialPort::Parity parity);
 };
 
 #endif // SERIALSETTINGSWINDOW_H

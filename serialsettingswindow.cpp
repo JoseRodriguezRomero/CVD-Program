@@ -191,147 +191,313 @@ SerialSettingsWindow::SerialSettingsWindow(QWidget *parent) :
     pfeiffer_data_bits = new QComboBox(this);
     pfeiffer_layout->addWidget(pfeiffer_data_bits,1,4,1,1);
 
-    eurotherm_baud_rate->insertItem(0,"1200");
-    eurotherm_baud_rate->insertItem(1,"2400");
-    eurotherm_baud_rate->insertItem(2,"4800");
-    eurotherm_baud_rate->insertItem(3,"9600");
-    eurotherm_baud_rate->insertItem(4,"19200");
+    QVector<QComboBox*> baud_rates;
+    baud_rates.append(eurotherm_baud_rate);
+    baud_rates.append(mks_baud_rate);
+    baud_rates.append(pfeiffer_baud_rate);
 
-    eurotherm_parity->insertItem(0,"None");
-    eurotherm_parity->insertItem(1,"Even");
-    eurotherm_parity->insertItem(2,"Odd");
+    QVector<QComboBox*> parities;
+    parities.append(eurotherm_parity);
+    parities.append(mks_parity);
+    parities.append(pfeiffer_parity);
 
-    eurotherm_stop_bits->insertItem(0,"1");
-    eurotherm_stop_bits->insertItem(1,"2");
+    QVector<QComboBox*> stop_bits;
+    stop_bits.append(eurotherm_stop_bits);
+    stop_bits.append(mks_stop_bits);
+    stop_bits.append(pfeiffer_stop_bits);
 
-    eurotherm_data_bits->insertItem(0,"5");
-    eurotherm_data_bits->insertItem(1,"6");
-    eurotherm_data_bits->insertItem(2,"7");
-    eurotherm_data_bits->insertItem(3,"8");
+    QVector<QComboBox*> data_bits;
+    data_bits.append(eurotherm_data_bits);
+    data_bits.append(mks_data_bits);
+    data_bits.append(pfeiffer_data_bits);
 
-    mks_baud_rate->insertItem(0,"1200");
-    mks_baud_rate->insertItem(1,"2400");
-    mks_baud_rate->insertItem(2,"4800");
-    mks_baud_rate->insertItem(3,"9600");
-    mks_baud_rate->insertItem(4,"19200");
+    for (int i = 0; i < 3; i++)
+    {
+        baud_rates.at(i)->insertItem(0,"1200");
+        baud_rates.at(i)->insertItem(1,"2400");
+        baud_rates.at(i)->insertItem(2,"4800");
+        baud_rates.at(i)->insertItem(3,"9600");
+        baud_rates.at(i)->insertItem(4,"19200");
 
-    mks_parity->insertItem(0,"None");
-    mks_parity->insertItem(1,"Even");
-    mks_parity->insertItem(2,"Odd");
+        parities.at(i)->insertItem(0,"None");
+        parities.at(i)->insertItem(1,"Even");
+        parities.at(i)->insertItem(2,"Odd");
 
-    mks_stop_bits->insertItem(0,"1");
-    mks_stop_bits->insertItem(1,"2");
+        stop_bits.at(i)->insertItem(0,"1");
+        stop_bits.at(i)->insertItem(1,"2");
 
-    mks_data_bits->insertItem(0,"5");
-    mks_data_bits->insertItem(1,"6");
-    mks_data_bits->insertItem(2,"7");
-    mks_data_bits->insertItem(3,"8");
-
-    pfeiffer_baud_rate->insertItem(0,"1200");
-    pfeiffer_baud_rate->insertItem(1,"2400");
-    pfeiffer_baud_rate->insertItem(2,"4800");
-    pfeiffer_baud_rate->insertItem(3,"9600");
-    pfeiffer_baud_rate->insertItem(4,"19200");
-
-    pfeiffer_parity->insertItem(0,"None");
-    pfeiffer_parity->insertItem(1,"Even");
-    pfeiffer_parity->insertItem(2,"Odd");
-
-    pfeiffer_stop_bits->insertItem(0,"1");
-    pfeiffer_stop_bits->insertItem(1,"2");
-
-    pfeiffer_data_bits->insertItem(0,"5");
-    pfeiffer_data_bits->insertItem(1,"6");
-    pfeiffer_data_bits->insertItem(2,"7");
-    pfeiffer_data_bits->insertItem(3,"8");
+        data_bits.at(i)->insertItem(0,"5");
+        data_bits.at(i)->insertItem(1,"6");
+        data_bits.at(i)->insertItem(2,"7");
+        data_bits.at(i)->insertItem(3,"8");
+    }
 
     connect(ok_button,SIGNAL(clicked(bool)),this,SLOT(apply()));
     connect(cancel_button,SIGNAL(clicked(bool)),this,SLOT(close()));
     connect(refresh_button,SIGNAL(clicked(bool)),this,SLOT(refresh()));
 
     connect(eurotherm_port_name,SIGNAL(currentIndexChanged(int)),
-            this,SLOT(updateEurothermProductIdentifier()));
+            this,SLOT(updateProductIdentifiers()));
 }
 
-void SerialSettingsWindow::setEurothermPortName(const QString &port_name)
+void SerialSettingsWindow::setPortName(
+        const SerialSettingsWindow::Device device, const QString &port_name)
 {
-    eurotherm_port_name->setCurrentText(port_name);
+    QComboBox *port_name_combobox;
+
+    switch (device) {
+    case Eurotherm:
+        port_name_combobox = eurotherm_port_name;
+        break;
+    case Pfeiffer:
+        port_name_combobox = pfeiffer_port_name;
+        break;
+    case MKS:
+        port_name_combobox = mks_port_name;
+        break;
+    default:
+        return;
+    }
+
+    port_name_combobox->setCurrentText(port_name);
 }
 
-void SerialSettingsWindow::setEurothermPortBaudRate(
-        QSerialPort::BaudRate baud_rate)
+void SerialSettingsWindow::setBaudRate(
+        const SerialSettingsWindow::Device device,
+        const QSerialPort::BaudRate baud_rate)
 {
+    QComboBox *baud_rate_combobox;
+
+    switch (device) {
+    case Eurotherm:
+        baud_rate_combobox = eurotherm_baud_rate;
+        break;
+    case Pfeiffer:
+        baud_rate_combobox = pfeiffer_baud_rate;
+        break;
+    case MKS:
+        baud_rate_combobox = mks_baud_rate;
+        break;
+    default:
+        return;
+    }
+
     switch (baud_rate) {
     case QSerialPort::Baud1200:
-        eurotherm_baud_rate->setCurrentIndex(0);
+        baud_rate_combobox->setCurrentIndex(0);
         break;
     case QSerialPort::Baud2400:
-        eurotherm_baud_rate->setCurrentIndex(1);
+        baud_rate_combobox->setCurrentIndex(1);
         break;
     case QSerialPort::Baud4800:
-        eurotherm_baud_rate->setCurrentIndex(2);
+        baud_rate_combobox->setCurrentIndex(2);
         break;
     case QSerialPort::Baud9600:
-        eurotherm_baud_rate->setCurrentIndex(3);
+        baud_rate_combobox->setCurrentIndex(3);
         break;
     case QSerialPort::Baud19200:
-        eurotherm_baud_rate->setCurrentIndex(4);
+        baud_rate_combobox->setCurrentIndex(4);
         break;
     }
 }
 
-void SerialSettingsWindow::setEurothermPortParity(QSerialPort::Parity parity)
+void SerialSettingsWindow::setStopBits(
+        const SerialSettingsWindow::Device device,
+        const QSerialPort::StopBits stop_bits)
 {
-    switch (parity) {
-    case QSerialPort::NoParity:
-        eurotherm_parity->setCurrentIndex(0);
-        break;
-    case QSerialPort::EvenParity:
-        eurotherm_parity->setCurrentIndex(1);
-        break;
-    case QSerialPort::OddParity:
-        eurotherm_parity->setCurrentIndex(2);
-        break;
-    }
-}
+    QComboBox *stop_bits_combobox;
 
-void SerialSettingsWindow::setEurothermPortStopBits(
-        QSerialPort::StopBits stop_bits)
-{
+    switch (device) {
+    case Eurotherm:
+        stop_bits_combobox = eurotherm_stop_bits;
+        break;
+    case Pfeiffer:
+        stop_bits_combobox = pfeiffer_stop_bits;
+        break;
+    case MKS:
+        stop_bits_combobox = mks_stop_bits;
+        break;
+    default:
+        return;
+    }
+
     switch (stop_bits) {
     case QSerialPort::OneStop:
-        eurotherm_stop_bits->setCurrentIndex(0);
+        stop_bits_combobox->setCurrentIndex(0);
         break;
     case QSerialPort::TwoStop:
-        eurotherm_stop_bits->setCurrentIndex(1);
+        stop_bits_combobox->setCurrentIndex(1);
         break;
     }
 }
 
-void SerialSettingsWindow::setEurothermPortDataBits(
-        QSerialPort::DataBits data_bits)
+void SerialSettingsWindow::setDataBits(
+        const SerialSettingsWindow::Device device,
+        const QSerialPort::DataBits data_bits)
 {
+    QComboBox *data_bits_combobox;
+
+    switch (device) {
+    case Eurotherm:
+        data_bits_combobox = eurotherm_data_bits;
+        break;
+    case Pfeiffer:
+        data_bits_combobox = pfeiffer_data_bits;
+        break;
+    case MKS:
+        data_bits_combobox = mks_data_bits;
+        break;
+    default:
+        return;
+    }
+
     switch (data_bits) {
     case QSerialPort::Data5:
-        eurotherm_data_bits->setCurrentIndex(0);
+        data_bits_combobox->setCurrentIndex(0);
         break;
     case QSerialPort::Data6:
-        eurotherm_data_bits->setCurrentIndex(1);
+        data_bits_combobox->setCurrentIndex(1);
         break;
     case QSerialPort::Data7:
-        eurotherm_data_bits->setCurrentIndex(2);
+        data_bits_combobox->setCurrentIndex(2);
         break;
     case QSerialPort::Data8:
-        eurotherm_data_bits->setCurrentIndex(3);
+        data_bits_combobox->setCurrentIndex(3);
+        break;
+    }
+}
+
+void SerialSettingsWindow::setParity(const SerialSettingsWindow::Device device,
+                                     const QSerialPort::Parity parity)
+{
+    QComboBox *parity_combobox;
+
+    switch (device) {
+    case Eurotherm:
+        parity_combobox = eurotherm_parity;
+        break;
+    case Pfeiffer:
+        parity_combobox = pfeiffer_parity;
+        break;
+    case MKS:
+        parity_combobox = mks_parity;
+        break;
+    default:
+        return;
+    }
+
+    switch (parity) {
+    case QSerialPort::NoParity:
+        parity_combobox->setCurrentIndex(0);
+        break;
+    case QSerialPort::EvenParity:
+        parity_combobox->setCurrentIndex(1);
+        break;
+    case QSerialPort::OddParity:
+        parity_combobox->setCurrentIndex(2);
         break;
     }
 }
 
 void SerialSettingsWindow::apply()
 {
-    emitEurothermSerialInfo();
-    emitMKSSerialInfo();
-    emitPfeifferSerialInfo();
+    QVector<Device> devices = {Eurotherm, Pfeiffer, MKS};
+
+    QVector<QComboBox*> port_names_comboboxes;
+    port_names_comboboxes.append(eurotherm_port_name);
+    port_names_comboboxes.append(pfeiffer_port_name);
+    port_names_comboboxes.append(mks_port_name);
+
+    QVector<QComboBox*> baud_rate_comboboxes;
+    baud_rate_comboboxes.append(eurotherm_baud_rate);
+    baud_rate_comboboxes.append(pfeiffer_baud_rate);
+    baud_rate_comboboxes.append(mks_baud_rate);
+
+    QVector<QComboBox*> parity_comboboxes;
+    parity_comboboxes.append(eurotherm_parity);
+    parity_comboboxes.append(pfeiffer_parity);
+    parity_comboboxes.append(mks_parity);
+
+    QVector<QComboBox*> stop_bits_comboboxes;
+    stop_bits_comboboxes.append(eurotherm_stop_bits);
+    stop_bits_comboboxes.append(pfeiffer_stop_bits);
+    stop_bits_comboboxes.append(mks_stop_bits);
+
+    QVector<QComboBox*> data_bits_comboboxes;
+    data_bits_comboboxes.append(eurotherm_data_bits);
+    data_bits_comboboxes.append(pfeiffer_data_bits);
+    data_bits_comboboxes.append(mks_data_bits);
+
+    for (int i = 0; i < 3; i++)
+    {
+        Device device = devices.at(i);
+        QString port_name = port_names_comboboxes.at(i)->currentText();
+
+        QSerialPort::BaudRate baud_rate;
+        switch (baud_rate_comboboxes.at(i)->currentIndex()) {
+        case 0:
+            baud_rate = QSerialPort::Baud1200;
+            break;
+        case 1:
+            baud_rate = QSerialPort::Baud2400;
+            break;
+        case 2:
+            baud_rate = QSerialPort::Baud4800;
+            break;
+        case 3:
+            baud_rate = QSerialPort::Baud9600;
+            break;
+        default:
+            baud_rate = QSerialPort::Baud19200;
+            break;
+        }
+
+        QSerialPort::Parity parity;
+        switch (parity_comboboxes.at(i)->currentIndex()) {
+        case 0:
+            parity = QSerialPort::NoParity;
+            break;
+        case 1:
+            parity = QSerialPort::EvenParity;
+            break;
+        default:
+            parity = QSerialPort::OddParity;
+            break;
+        }
+
+        QSerialPort::StopBits stop_bits;
+        switch (stop_bits_comboboxes.at(i)->currentIndex()) {
+        case 0:
+            stop_bits = QSerialPort::OneStop;
+            break;
+        default:
+            stop_bits = QSerialPort::TwoStop;
+            break;
+        }
+
+        QSerialPort::DataBits data_bits;
+        switch (data_bits_comboboxes.at(i)->currentIndex()) {
+        case 0:
+            data_bits = QSerialPort::Data5;
+            break;
+        case 1:
+            data_bits = QSerialPort::Data6;
+            break;
+        case 2:
+            data_bits = QSerialPort::Data7;
+            break;
+        default:
+            data_bits = QSerialPort::Data8;
+            break;
+        }
+
+        emit changePortName(device,port_name);
+        emit changeBaudRate(device,baud_rate);
+        emit changeParity(device,parity);
+        emit changeStopBits(device,stop_bits);
+        emit changeDataBits(device,data_bits);
+    }
+
     this->close();
 }
 
@@ -358,85 +524,8 @@ void SerialSettingsWindow::refresh()
     }
 }
 
-void SerialSettingsWindow::updateEurothermProductIdentifier()
+void SerialSettingsWindow::updateProductIdentifiers()
 {
     QSerialPortInfo selected_port(eurotherm_port_name->currentText());
     eurotherm_manufacturer->setText(selected_port.manufacturer());
-}
-
-void SerialSettingsWindow::emitEurothermSerialInfo()
-{
-    emit changeEurothermPortName(eurotherm_port_name->currentText());
-
-    QSerialPort::BaudRate baud_rate;
-    switch (eurotherm_baud_rate->currentIndex()) {
-    case 0:
-        baud_rate = QSerialPort::Baud1200;
-        break;
-    case 1:
-        baud_rate = QSerialPort::Baud2400;
-        break;
-    case 2:
-        baud_rate = QSerialPort::Baud4800;
-        break;
-    case 3:
-        baud_rate = QSerialPort::Baud9600;
-        break;
-    default:
-        baud_rate = QSerialPort::Baud19200;
-        break;
-    }
-    emit changeEurothermPortBaudRate(baud_rate);
-
-    QSerialPort::Parity parity;
-    switch (eurotherm_parity->currentIndex()) {
-    case 0:
-        parity = QSerialPort::NoParity;
-        break;
-    case 1:
-        parity = QSerialPort::EvenParity;
-        break;
-    default:
-        parity = QSerialPort::OddParity;
-        break;
-    }
-    emit changeEurothermPortParity(parity);
-
-    QSerialPort::StopBits stop_bits;
-    switch (eurotherm_stop_bits->currentIndex()) {
-    case 0:
-        stop_bits = QSerialPort::OneStop;
-        break;
-    default:
-        stop_bits = QSerialPort::TwoStop;
-        break;
-    }
-    emit changeEurothermPortStopBits(stop_bits);
-
-    QSerialPort::DataBits data_bits;
-    switch (eurotherm_data_bits->currentIndex()) {
-    case 0:
-        data_bits = QSerialPort::Data5;
-        break;
-    case 1:
-        data_bits = QSerialPort::Data6;
-        break;
-    case 2:
-        data_bits = QSerialPort::Data7;
-        break;
-    default:
-        data_bits = QSerialPort::Data8;
-        break;
-    }
-    emit changeEurothermPortDataBits(data_bits);
-}
-
-void SerialSettingsWindow::emitMKSSerialInfo()
-{
-
-}
-
-void SerialSettingsWindow::emitPfeifferSerialInfo()
-{
-
 }

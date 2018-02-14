@@ -23,6 +23,7 @@
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
+
 private:
     ManualControlPage manual_control_page;
     RecipesPage recipes_page;
@@ -42,6 +43,13 @@ private:
 public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
+
+public slots:
+    void setPortName(const SerialSettingsWindow::Device device, const QString &port_name);
+    void setBaudRate(const SerialSettingsWindow::Device device, const QSerialPort::BaudRate baud_rate);
+    void setStopBits(const SerialSettingsWindow::Device device, const QSerialPort::StopBits stop_bits);
+    void setDataBits(const SerialSettingsWindow::Device device, const QSerialPort::DataBits data_bits);
+    void setParity(const SerialSettingsWindow::Device device, const QSerialPort::Parity parity);
 
 private slots:
     void openSerialSettingsWindow();
