@@ -52,6 +52,32 @@ public:
         IdentificationError
     };
 
+    enum DecimalDigits {
+        TwoDigits,
+        ThreeDigits
+    };
+
+    enum MeasurementPoint {
+        MeasurePoint1,
+        MeasurePoint2,
+        MeasurePoint3,
+        MeasurePoint4,
+        MeasurePoint5,
+        MeasurePoint6
+    };
+
+    enum Units {
+        mBar,
+        Torr,
+        Pascal
+    };
+
+    enum BaragraphMode {
+        BaragraphOff,
+        MeasurementRange,
+        OneDecade
+    };
+
 public:
     PfeifferSerialclass(QObject *parent = 0);
     ~PfeifferSerialclass();
@@ -70,19 +96,36 @@ signals:
     void sensorPressureAndStautus(Sensor sensor,
                                   PressureMeasurementStatus staus,
                                   float pressure);
+    void decimalDigits(const DecimalDigits digits);
+    void measurementPointName(const MeasurementPoint measure_point,
+                              const QString &name);
+    void unitsOfMeasurement(const Units units);
+    void baragraphMode(BaragraphMode bar_mode);
+    void displayContrast(const int contrast);
 
 public slots:
     void processRequestQueue();
 
     void requestReadSensorStatuses();
-    void requestReadSensorControl(Sensor sensor);
-    void requestReadStatusAndPressure(Sensor sensor);
+    void requestReadSensorControl(const Sensor sensor);
+    void requestReadStatusAndPressure(const Sensor sensor);
+    void requestReadDecimalDigits();
+    void requestReadMeasurementPointNames();
+    void requestReadUnitsOfMeasurement();
+    void requestReadBaragraph();
+    void requestReadDisplayContrast();
 
-    void requestWriteSensorStatus(int sensor_num, SensorStatus status);
-    void requestWriteSensorControl(Sensor sensor, ControllingSource switch_on,
-                                   ControllingSource switch_off,
-                                   float switch_on_value,
-                                   float switch_off_value);
+    void requestWriteSensorStatus(const Sensor sensor, const SensorStatus status);
+    void requestWriteSensorControl(const Sensor sensor,
+                                   const ControllingSource switch_on,
+                                   const ControllingSource switch_off,
+                                   const float switch_on_value,
+                                   const float switch_off_value);
+    void requestWriteDecimalDigits(const DecimalDigits digits);
+    void requestWriteMeasurementPointNames(const QString names[6]);
+    void requestWriteUnitsOfMeasurement(const Units units);
+    void requestWriteBaragraph(BaragraphMode bar_mode);
+    void requestWriteDisplayContrast(const int contrast); // (0->min) (20->max)
 
     bool checkState();
     void manageReply();
@@ -98,6 +141,11 @@ private:
     bool manageSensorStatusReply();
     bool manageSensorControlReply();
     bool manageStatusAndPressureReply();
+    bool manageDecimalDigitsReply();
+    bool manageMeasurementPointNamesReply();
+    bool manageUnitsOfMeasurementReply();
+    bool manageBaragraphModeReply();
+    bool manageReplyDisplayContrast();
 };
 
 #endif // PFEIFFERSERIALCLASS_H

@@ -232,8 +232,7 @@ void PfeifferSerialclass::requestReadSensorStatuses()
     addReadRequestToQueue(request_queue,SEN_ID,SEN);
 }
 
-void PfeifferSerialclass::requestReadSensorControl(
-        PfeifferSerialclass::Sensor sensor)
+void PfeifferSerialclass::requestReadSensorControl(const Sensor sensor)
 {
     QVector<char> mneumonic(SC_X_);
     char mneumonic_idd;
@@ -266,7 +265,7 @@ void PfeifferSerialclass::requestReadSensorControl(
 }
 
 void PfeifferSerialclass::requestReadStatusAndPressure(
-        PfeifferSerialclass::Sensor sensor)
+        const Sensor sensor)
 {
     QVector<char> mneumonic(PR_X_);
     char mneumonic_idd;
@@ -298,8 +297,34 @@ void PfeifferSerialclass::requestReadStatusAndPressure(
     addReadRequestToQueue(request_queue,PRX_ID,mneumonic);
 }
 
+void PfeifferSerialclass::requestReadDecimalDigits()
+{
+    addReadRequestToQueue(request_queue,DCD_ID,DCD);
+}
+
+void PfeifferSerialclass::requestReadMeasurementPointNames()
+{
+    addReadRequestToQueue(request_queue,CID_ID,CID);
+}
+
+void PfeifferSerialclass::requestReadUnitsOfMeasurement()
+{
+    addReadRequestToQueue(request_queue,UNI_ID,UNI);
+}
+
+void PfeifferSerialclass::requestReadBaragraph()
+{
+    addReadRequestToQueue(request_queue,DCB_ID,DCB);
+}
+
+void PfeifferSerialclass::requestReadDisplayContrast()
+{
+    addReadRequestToQueue(request_queue, DCC_ID,DCC);
+}
+
 void PfeifferSerialclass::requestWriteSensorStatus(
-        int sensor_num, PfeifferSerialclass::SensorStatus status)
+        const PfeifferSerialclass::Sensor sensor,
+        const PfeifferSerialclass::SensorStatus status)
 {
     QVector<char> statuses;
     for (int i = 0; i < 6; i++)
@@ -307,12 +332,36 @@ void PfeifferSerialclass::requestWriteSensorStatus(
         statuses[i] = '0';
     }
 
+    int sensor_num;
+    switch (sensor) {
+    case Sensor1:
+        sensor_num = 0;
+        break;
+    case Sensor2:
+        sensor_num = 1;
+        break;
+    case Sensor3:
+        sensor_num = 2;
+        break;
+    case Sensor4:
+        sensor_num = 3;
+        break;
+    case Sensor5:
+        sensor_num = 4;
+        break;
+    case Sensor6:
+        sensor_num = 5;
+        break;
+    default:
+        return;
+    }
+
     switch (status) {
     case PfeifferSerialclass::On:
-        statuses[sensor_num-1] = '2';
+        statuses[sensor_num] = '2';
         break;
     case PfeifferSerialclass::Off:
-        statuses[sensor_num-1] = '1';
+        statuses[sensor_num] = '1';
         break;
     default:
         return;
@@ -322,10 +371,10 @@ void PfeifferSerialclass::requestWriteSensorStatus(
 }
 
 void PfeifferSerialclass::requestWriteSensorControl(
-        PfeifferSerialclass::Sensor sensor,
-        PfeifferSerialclass::ControllingSource switch_on,
-        PfeifferSerialclass::ControllingSource switch_off,
-        float switch_on_value, float switch_off_value)
+        const PfeifferSerialclass::Sensor sensor,
+        const PfeifferSerialclass::ControllingSource switch_on,
+        const PfeifferSerialclass::ControllingSource switch_off,
+        const float switch_on_value, const float switch_off_value)
 {
     QVector<char> mneumonic(SC_X_);
     QVector<char> args;
@@ -432,6 +481,106 @@ void PfeifferSerialclass::requestWriteSensorControl(
     }
 
     addWriteRequestToQueue(request_queue,SCX_ID,mneumonic,args);
+}
+
+void PfeifferSerialclass::requestWriteDecimalDigits(
+        const PfeifferSerialclass::DecimalDigits digits)
+{
+    QVector<char> arg;
+
+    switch (digits) {
+    case TwoDigits:
+        arg.append('2');
+        break;
+    case ThreeDigits:
+        arg.append('3');
+        break;
+    default:
+        return;
+    }
+
+    addWriteRequestToQueue(request_queue,DCD_ID,DCD,arg);
+}
+
+void PfeifferSerialclass::requestWriteMeasurementPointNames(
+        const QString names[6])
+{
+    QVector<char> args;
+
+    for (int i = 0; i < 6; i++)
+    {
+        QString aux_name = names[i];
+
+        while (aux_name.length() < 4) {
+            aux_name.append(' ');
+        }
+
+        for (int j = 0; j < 4; j++)
+        {
+            args.append(aux_name.at(j).toLatin1());
+        }
+    }
+
+    addWriteRequestToQueue(request_queue,CID_ID,CID,args);
+}
+
+void PfeifferSerialclass::requestWriteUnitsOfMeasurement(
+        const PfeifferSerialclass::Units units)
+{
+    QVector<char> arg;
+
+    switch (units) {
+    case mBar:
+        arg.append('0');
+        break;
+    case Torr:
+        arg.append('1');
+        break;
+    case Pascal:
+        arg.append('2');
+        break;
+    default:
+        return;
+    }
+
+    addWriteRequestToQueue(request_queue,UNI_ID,UNI,arg);
+}
+
+void PfeifferSerialclass::requestWriteBaragraph(
+        PfeifferSerialclass::BaragraphMode bar_mode)
+{
+    QVector<char> arg;
+
+    switch (bar_mode) {
+    case BaragraphOff:
+        arg.append('0');
+        break;
+    case MeasurementRange:
+        arg.append('1');
+        break;
+    case OneDecade:
+        arg.append('2');
+        break;
+    default:
+        return;
+    }
+
+    addWriteRequestToQueue(request_queue,DCB_ID,DCB,arg);
+}
+
+void PfeifferSerialclass::requestWriteDisplayContrast(const int contrast)
+{
+    if (contrast < 0 || contrast > 20)
+    {
+        return;
+    }
+
+    QString contrast_str = QString::number(contrast);
+    QVector<char> args;
+    args.append(contrast_str.at(0).toLatin1());
+    args.append(contrast_str.at(1).toLatin1());
+
+    addWriteRequestToQueue(request_queue,DCC_ID,DCC,args);
 }
 
 bool PfeifferSerialclass::checkState()
@@ -582,12 +731,16 @@ void PfeifferSerialclass::manageReply()
             case CAX_ID:
                 break;
             case CID_ID:
+                valid_reply = manageMeasurementPointNamesReply();
                 break;
             case DCB_ID:
+                valid_reply = manageBaragraphModeReply();
                 break;
             case DCC_ID:
+                valid_reply = manageReplyDisplayContrast();
                 break;
             case DCD_ID:
+                valid_reply = manageDecimalDigitsReply();
                 break;
             case DCS_ID:
                 break;
@@ -643,6 +796,7 @@ void PfeifferSerialclass::manageReply()
             case TRA_ID:
                 break;
             case UNI_ID:
+                valid_reply = manageUnitsOfMeasurementReply();
                 break;
             case WDT_ID:
                 break;
@@ -968,4 +1122,129 @@ bool PfeifferSerialclass::manageStatusAndPressureReply()
     }
 
     return pressure_cast;
+}
+
+bool PfeifferSerialclass::manageDecimalDigitsReply()
+{
+    if (buffer.length() != 3)
+    {
+        return false;
+    }
+
+    switch (buffer.at(0)) {
+    case '2':
+        emit decimalDigits(TwoDigits);
+        break;
+    case '3':
+        emit decimalDigits(ThreeDigits);
+        break;
+    default:
+        return false;
+    }
+
+    return true;
+}
+
+bool PfeifferSerialclass::manageMeasurementPointNamesReply()
+{
+    if (buffer.length() != 26)
+    {
+        return false;
+    }
+
+    QString aux_name;
+    MeasurementPoint measure_points[6] = {MeasurePoint1, MeasurePoint2,
+                                          MeasurePoint3, MeasurePoint4,
+                                          MeasurePoint5, MeasurePoint6};
+
+    for (int i = 0; i < 6; i++)
+    {
+        aux_name.clear();
+        for (int j = 0; j < 4; j++)
+        {
+            aux_name.append(buffer.at(4*i+j));
+        }
+
+        emit measurementPointName(measure_points[i],aux_name);
+    }
+
+    return true;
+}
+
+bool PfeifferSerialclass::manageUnitsOfMeasurementReply()
+{
+    if (buffer.length() != 3)
+    {
+        return false;
+    }
+
+    switch (buffer.at(0)) {
+    case '0':
+        emit unitsOfMeasurement(mBar);
+        break;
+    case '1':
+        emit unitsOfMeasurement(Torr);
+        break;
+    case '2':
+        emit unitsOfMeasurement(Pascal);
+        break;
+    default:
+        return false;
+    }
+
+    return true;
+}
+
+bool PfeifferSerialclass::manageBaragraphModeReply()
+{
+    if (buffer.length() != 3)
+    {
+        return false;
+    }
+
+    switch (buffer.at(0)) {
+    case '0':
+        emit baragraphMode(BaragraphOff);
+        break;
+    case '1':
+        emit baragraphMode(MeasurementRange);
+        break;
+    case '2':
+        emit baragraphMode(OneDecade);
+        break;
+    default:
+        return false;
+    }
+
+    return true;
+}
+
+bool PfeifferSerialclass::manageReplyDisplayContrast()
+{
+    if (buffer.length() != 4)
+    {
+        return false;
+    }
+
+    int contrast = 0;
+
+    for (int i = 0; i < 2; i++)
+    {
+        char aux_arg = buffer.at(i) - '0';
+
+        if (buffer.at(i) < 0 || buffer.at(i) > 9)
+        {
+            return false;
+        }
+
+        contrast += static_cast<int>(aux_arg*pow(10,1-i));
+    }
+
+    if (contrast > 20)
+    {
+        return false;
+    }
+
+    emit displayContrast(contrast);
+    return true;
 }
