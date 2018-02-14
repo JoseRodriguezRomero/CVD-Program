@@ -41,6 +41,11 @@ QSerialPort::DataBits BaseSerialClass::dataBits() const
     return data_bits;
 }
 
+QSerialPort::FlowControl BaseSerialClass::flowControl() const
+{
+    return flow_control;
+}
+
 void BaseSerialClass::setSerialPortName(const QString &port_name)
 {
     this->port_name = port_name;
@@ -68,6 +73,12 @@ void BaseSerialClass::setDataBits(const QSerialPort::DataBits
                                                  data_bits)
 {
     this->data_bits = data_bits;
+}
+
+void BaseSerialClass::setFlowControl(const QSerialPort::FlowControl
+                                     flow_control)
+{
+    this->flow_control = flow_control;
 }
 
 void BaseSerialClass::clearRequestQueue()

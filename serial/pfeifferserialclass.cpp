@@ -1,7 +1,6 @@
 #include "pfeifferserialclass.h"
 
 #define MAX_QUEUE_LEN           20
-#define MAX_FAILED_ATTEMPS      3
 
 #define PFEIFFER_FLOW_CONTROL       QSerialPort::NoFlowControl
 #define PFEIFFER_STOP_BITS          QSerialPort::OneStop
@@ -94,59 +93,68 @@ struct PfeifferRequestStruct
     QVector<char> args;
 };
 
-struct PfeifferSerialStruct {
-    QVector<PfeifferRequestStruct> process_queue;
-    QByteArray buffer;
-    uint failed_attempts;
-};
-
-void addReadRequestToQueue(PfeifferSerialStruct *parent,
+void addReadRequestToQueue(QVector<void*> &request_queue,
                            int mneumonic_id, QVector<char> mneumonic)
 {
-    PfeifferRequestStruct new_request;
-    new_request.mneumonic_id = mneumonic_id;
-    new_request.mneumonic = mneumonic;
-    new_request.pending = false;
-    new_request.enquiry = true;
-    new_request.enquirying = false;
-    new_request.args.clear();
+    while (request_queue.length() > MAX_QUEUE_LEN)
+    {
+        delete request_queue.at(0);
+        request_queue.removeAt(0);
+    }
 
-    parent->process_queue.append(new_request);
+    PfeifferRequestStruct *new_request = new PfeifferRequestStruct;
+    new_request->mneumonic_id = mneumonic_id;
+    new_request->mneumonic = mneumonic;
+    new_request->pending = false;
+    new_request->enquiry = true;
+    new_request->enquirying = false;
+    new_request->args.clear();
+
+    request_queue.append(new_request);
 }
 
-void addWriteRequestToQueue(PfeifferSerialStruct *parent,
+void addWriteRequestToQueue(QVector<void*> &request_queue,
                             int mneumonic_id, QVector<char> mneumonic,
                             const QVector<char> &args)
 {
-    PfeifferRequestStruct new_request;
-    new_request.mneumonic_id = mneumonic_id;
-    new_request.mneumonic = mneumonic;
-    new_request.pending = false;
-    new_request.enquiry = true;
-    new_request.enquirying = false;
-    new_request.args.clear();
-    new_request.args.append(args);
+    while (request_queue.length() > MAX_QUEUE_LEN)
+    {
+        delete request_queue.at(0);
+        request_queue.removeAt(0);
+    }
 
-    parent->process_queue.append(new_request);
+    PfeifferRequestStruct *new_request = new PfeifferRequestStruct;
+    new_request->mneumonic_id = mneumonic_id;
+    new_request->mneumonic = mneumonic;
+    new_request->pending = false;
+    new_request->enquiry = true;
+    new_request->enquirying = false;
+    new_request->args.clear();
+    new_request->args.append(args);
+
+    request_queue.append(new_request);
 }
 
-PfeifferSerialclass::PfeifferSerialclass(QObject *parent) :
-    QObject(parent)
+PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
 {
+    this->setParent(parent);
+
     serial_port = nullptr;
 
     reconnect_timer.setInterval(1000);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(100);
+    event_timer.setInterval(30);
     event_timer.setSingleShot(false);
 
-    private_struct = new PfeifferSerialStruct;
-    private_struct->failed_attempts = 0;
+    port_name = "COM7";
+    baud_rate = QSerialPort::Baud9600;
+    stop_bits = PFEIFFER_STOP_BITS;
+    data_bits = PFEIFFER_DATA_BITS;
+    port_parity = PFEIFFER_PARITY;
+    flow_control = PFEIFFER_FLOW_CONTROL;
 
-    connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
-    connect(&event_timer,SIGNAL(timeout()),
-            this,SLOT(processSerialRequestQueue()));
+    failed_attempts = 0;
 }
 
 PfeifferSerialclass::~PfeifferSerialclass()
@@ -159,74 +167,37 @@ PfeifferSerialclass::~PfeifferSerialclass()
 
         serial_port->deleteLater();
     }
-
-    delete private_struct;
 }
 
-QString PfeifferSerialclass::PortName() const
+bool PfeifferSerialclass::deviceConnected() const
 {
-    return port_name;
-}
-
-QSerialPort::FlowControl PfeifferSerialclass::FlowControl() const
-{
-    return PFEIFFER_FLOW_CONTROL;
-}
-
-QSerialPort::BaudRate PfeifferSerialclass::BaudRate() const
-{
-    return baud_rate;
-}
-
-QSerialPort::StopBits PfeifferSerialclass::StopBits() const
-{
-    return PFEIFFER_STOP_BITS;
-}
-
-QSerialPort::DataBits PfeifferSerialclass::DataBits() const
-{
-    return PFEIFFER_DATA_BITS;
-}
-
-QSerialPort::Parity PfeifferSerialclass::Parity() const
-{
-    return PFEIFFER_PARITY;
-}
-
-void PfeifferSerialclass::processSerialRequestQueue()
-{
-    if (!private_struct->process_queue.length())
-    {
-        return;
-    }
-
     if (serial_port == nullptr)
     {
-        event_timer.stop();
-        reconnect_timer.start();
-        return;
+        return false;
     }
 
-    if (!serial_port->isOpen())
+    QSerialPort::SerialPortError error = serial_port->error();
+
+    if (error == QSerialPort::NotOpenError ||
+            error == QSerialPort::OpenError)
     {
-        disconnectDevice();
-        event_timer.stop();
-        reconnect_timer.start();
-
-        if (!reconnect_timer.isActive())
-        {
-            reconnect_timer.start();
-        }
-
-        return;
+        return false;
     }
 
-    if (private_struct->process_queue.first().pending)
-    {
-        return;
-    }
+    return true;
+}
 
-    QVector<char> mneumonic = private_struct->process_queue.first().mneumonic;
+bool PfeifferSerialclass::deviceDisconnected() const
+{
+    return !deviceConnected();
+}
+
+void PfeifferSerialclass::processRequestQueue()
+{
+    PfeifferRequestStruct *request =static_cast<PfeifferRequestStruct*>(
+                request_queue.first());
+
+    QVector<char> mneumonic = request->mneumonic;
     QByteArray msg;
     msg.clear();
 
@@ -235,7 +206,7 @@ void PfeifferSerialclass::processSerialRequestQueue()
         msg.append(mneumonic.at(i));
     }
 
-    QVector<char> args = private_struct->process_queue.first().args;
+    QVector<char> args = request->args;
 
     for (int i = 0; i < args.length(); i++)
     {
@@ -251,24 +222,14 @@ void PfeifferSerialclass::processSerialRequestQueue()
 
         if (serial_port->waitForBytesWritten())
         {
-            private_struct->process_queue[0].pending = true;
+            request->pending = true;
         }
     }
 }
 
-void PfeifferSerialclass::setPortName(const QString &port_name)
-{
-    this->port_name = port_name;
-}
-
-void PfeifferSerialclass::setBaudRate(const QSerialPort::BaudRate baud_rate)
-{
-    this->baud_rate = baud_rate;
-}
-
 void PfeifferSerialclass::requestReadSensorStatuses()
 {
-    addReadRequestToQueue(private_struct,SEN_ID,SEN);
+    addReadRequestToQueue(request_queue,SEN_ID,SEN);
 }
 
 void PfeifferSerialclass::requestReadSensorControl(
@@ -301,7 +262,7 @@ void PfeifferSerialclass::requestReadSensorControl(
     }
 
     mneumonic.append(mneumonic_idd);
-    addReadRequestToQueue(private_struct,SCX_ID,mneumonic);
+    addReadRequestToQueue(request_queue,SCX_ID,mneumonic);
 }
 
 void PfeifferSerialclass::requestReadStatusAndPressure(
@@ -334,7 +295,7 @@ void PfeifferSerialclass::requestReadStatusAndPressure(
     }
 
     mneumonic.append(mneumonic_idd);
-    addReadRequestToQueue(private_struct,PRX_ID,mneumonic);
+    addReadRequestToQueue(request_queue,PRX_ID,mneumonic);
 }
 
 void PfeifferSerialclass::requestWriteSensorStatus(
@@ -357,7 +318,7 @@ void PfeifferSerialclass::requestWriteSensorStatus(
         return;
     }
 
-    addWriteRequestToQueue(private_struct,SEN_ID,SEN,statuses);
+    addWriteRequestToQueue(request_queue,SEN_ID,SEN,statuses);
 }
 
 void PfeifferSerialclass::requestWriteSensorControl(
@@ -470,7 +431,7 @@ void PfeifferSerialclass::requestWriteSensorControl(
         }
     }
 
-    addWriteRequestToQueue(private_struct,SCX_ID,mneumonic,args);
+    addWriteRequestToQueue(request_queue,SCX_ID,mneumonic,args);
 }
 
 bool PfeifferSerialclass::checkState()
@@ -527,13 +488,6 @@ bool PfeifferSerialclass::checkState()
     emit ErrorString("Pfeiffer: " + reply_string, status);
     emit deviceConnected(serial_port->error());
 
-    if (!status)
-    {
-        disconnectDevice();
-        event_timer.stop();
-        reconnect_timer.start();
-    }
-
     return status;
 }
 
@@ -542,8 +496,6 @@ void PfeifferSerialclass::connectDevice()
     if (serial_port == nullptr)
     {
         serial_port = new QSerialPort(this);
-
-        connect(serial_port,SIGNAL(readyRead()),this,SLOT(ManageReply()));
     }
     else if (serial_port->isOpen())
     {
@@ -552,12 +504,10 @@ void PfeifferSerialclass::connectDevice()
 
     serial_port->setPortName(port_name);
     serial_port->setBaudRate(baud_rate);
-    serial_port->setFlowControl(PFEIFFER_FLOW_CONTROL);
-    serial_port->setStopBits(PFEIFFER_STOP_BITS);
-    serial_port->setDataBits(PFEIFFER_DATA_BITS);
-    serial_port->setParity(PFEIFFER_PARITY);
-
-    serial_port->setParity(QSerialPort::NoParity);
+    serial_port->setFlowControl(flow_control);
+    serial_port->setStopBits(stop_bits);
+    serial_port->setDataBits(data_bits);
+    serial_port->setParity(port_parity);
 
     if (serial_port->open(QIODevice::ReadWrite))
     {
@@ -591,26 +541,42 @@ void PfeifferSerialclass::disconnectDevice()
     serial_port = nullptr;
 }
 
-void PfeifferSerialclass::ManageReply()
+bool PfeifferSerialclass::processPending() const
 {
+    PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
+                request_queue.first());
+
+    return request->pending;
+}
+
+void PfeifferSerialclass::manageReply()
+{
+    PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
+                request_queue.first());
+
+    if (!(serial_port->isReadable() && serial_port->isDataTerminalReady()))
+    {
+        return;
+    }
+
     QByteArray read_buffer = serial_port->readAll();
     serial_port->flush();
 
     if ((read_buffer.at(read_buffer.length()-2) != '\r') ||
             (read_buffer.at(read_buffer.length()-1) != '\n'))
     {
-        private_struct->process_queue[0].pending = false;
+        request->pending = false;
         event_timer.start();
     }
 
-    if (private_struct->process_queue.first().enquiry)
+    if (request->enquiry)
     {
-        if (private_struct->process_queue.first().enquirying)
+        if (request->enquirying)
         {
-            private_struct->buffer = read_buffer;
+            buffer = read_buffer;
             bool valid_reply = true;
 
-            switch (private_struct->process_queue.first().mneumonic_id) {
+            switch (request->mneumonic_id) {
             case BAU_ID:
                 break;
             case CAX_ID:
@@ -682,18 +648,21 @@ void PfeifferSerialclass::ManageReply()
                 break;
             }
 
+            buffer.clear();
+
             if (valid_reply)
             {
-                private_struct->process_queue.remove(0);
-                private_struct->process_queue[0].pending = false;
+                delete request;
+                request_queue.remove(0);
+                request = static_cast<PfeifferRequestStruct*>(
+                            request_queue.first());
+                request->pending = false;
             }
             else
             {
-                private_struct->process_queue[0].pending = false;
-                private_struct->process_queue[0].enquirying = false;
+                request->pending = false;
+                request->enquirying = false;
             }
-
-            event_timer.start();
         }
         else
         {
@@ -707,27 +676,28 @@ void PfeifferSerialclass::ManageReply()
 
                 if (serial_port->waitForBytesWritten())
                 {
-                    private_struct->process_queue[0].enquirying = true;
+                    request->enquirying = true;
                 }
             }
             else
             {
-                private_struct->process_queue[0].pending = false;
+                request->pending = false;
             }
         }
     }
     else
     {
-        private_struct->process_queue.remove(0);
-        private_struct->process_queue[0].pending = false;
+        delete request;
+        request_queue.remove(0);
+        request = static_cast<PfeifferRequestStruct*>(
+                    request_queue.first());
+        request->pending = false;
     }
 }
 
 bool PfeifferSerialclass::manageSensorStatusReply()
 {
-    QByteArray &read_buffer = private_struct->buffer;
-
-    if (read_buffer.length() == 8)
+    if (buffer.length() == 8)
     {
         Sensor sensors[6];
         SensorStatus statuses[6];
@@ -759,7 +729,7 @@ bool PfeifferSerialclass::manageSensorStatusReply()
 
             SensorStatus status;
 
-            switch (read_buffer.at(i)) {
+            switch (buffer.at(i)) {
             case '2':
                 status = On;
                 break;
@@ -787,16 +757,16 @@ bool PfeifferSerialclass::manageSensorStatusReply()
 
 bool PfeifferSerialclass::manageSensorControlReply()
 {
-    QByteArray &read_buffer = private_struct->buffer;
+    PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
+                request_queue.first());
 
-    if (read_buffer.length() != 20)
+    if (buffer.length() != 20)
     {
         return false;
     }
 
     Sensor sensor;
-    char mnenumonic_idd = private_struct->process_queue.first().
-            mneumonic.last();
+    char mnenumonic_idd = request->mneumonic.last();
 
     switch (mnenumonic_idd) {
     case 'A':
@@ -821,8 +791,8 @@ bool PfeifferSerialclass::manageSensorControlReply()
         return false;
     }
 
-    char switch_on_source_char  = read_buffer.at(0);
-    char switch_off_source_char = read_buffer.at(1);
+    char switch_on_source_char  = buffer.at(0);
+    char switch_off_source_char = buffer.at(1);
 
     ControllingSource switch_on_source;
     ControllingSource switch_off_source;
@@ -893,12 +863,12 @@ bool PfeifferSerialclass::manageSensorControlReply()
 
     for (int i = 0; i < 8; i++)
     {
-        switch_on_value_string.append(read_buffer.at(i+2));
+        switch_on_value_string.append(buffer.at(i+2));
     }
 
     for (int i = 0; i < 8; i++)
     {
-        switch_off_value_string.append(read_buffer.at(i+10));
+        switch_off_value_string.append(buffer.at(i+10));
     }
 
     bool switch_on_cast;
@@ -918,16 +888,16 @@ bool PfeifferSerialclass::manageSensorControlReply()
 
 bool PfeifferSerialclass::manageStatusAndPressureReply()
 {
-    QByteArray &read_buffer = private_struct->buffer;
+    PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
+                request_queue.first());
 
-    if (read_buffer.length() != 11)
+    if (buffer.length() != 11)
     {
         return false;
     }
 
     Sensor sensor;
-    char mnenumonic_idd = private_struct->process_queue.first().
-            mneumonic.last();
+    char mnenumonic_idd = request->mneumonic.last();
 
     switch (mnenumonic_idd) {
     case '1':
@@ -953,7 +923,7 @@ bool PfeifferSerialclass::manageStatusAndPressureReply()
     }
 
     PressureMeasurementStatus status;
-    char status_char = read_buffer.at(0);
+    char status_char = buffer.at(0);
 
     switch (status_char) {
     case '0':
@@ -987,7 +957,7 @@ bool PfeifferSerialclass::manageStatusAndPressureReply()
 
     for (int i = 0; i < 8; i++)
     {
-        pressure_value_string.append(read_buffer.at(i+1));
+        pressure_value_string.append(buffer.at(i+1));
     }
 
     pressure_value = pressure_value_string.toFloat(&pressure_cast);

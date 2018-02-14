@@ -11,14 +11,14 @@ class BaseSerialClass : public QObject
 {
     Q_OBJECT
 protected:
-    QVector<void*> request_queue;   // lol - templating ain't allowed
-                                    // for qobjects.....
+    QVector<void*> request_queue;  // QObjects do not support templating....
 
     QString port_name;
     QSerialPort::BaudRate baud_rate;
     QSerialPort::Parity port_parity;
     QSerialPort::StopBits stop_bits;
     QSerialPort::DataBits data_bits;
+    QSerialPort::FlowControl flow_control;
 
     QTimer event_timer;
     QTimer reconnect_timer;
@@ -29,23 +29,25 @@ public:
     void setEventTimeInterval(const uint interval);             // in msec
     void setReconnectTimeInterval(const uint interval);         // in msec
 
+    virtual bool deviceConnected() const = 0;
+    virtual bool deviceDisconnected() const = 0;
+
 public slots:
     QString serialPortName() const;
     QSerialPort::Parity parity() const;
     QSerialPort::BaudRate baudRate() const;
     QSerialPort::StopBits stopBits() const;
     QSerialPort::DataBits dataBits() const;
+    QSerialPort::FlowControl flowControl() const;
 
     void setSerialPortName(const QString &port_name);
     void setParity(const QSerialPort::Parity port_parity);
     void setBaudRate(const QSerialPort::BaudRate baud_rate);
     void setStopBits(const QSerialPort::StopBits stop_bits);
     void setDataBits(const QSerialPort::DataBits data_bits);
+    void setFlowControl(const QSerialPort::FlowControl flow_control);
 
     virtual bool processPending() const = 0;
-
-    virtual bool deviceConnected() const = 0;
-    virtual bool deviceDisconnected() const = 0;
 
     virtual void manageReply() = 0;
     virtual void processRequestQueue() = 0;

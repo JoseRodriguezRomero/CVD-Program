@@ -6,20 +6,14 @@
 #include <QObject>
 #include <QSerialPort>
 
-struct PfeifferSerialStruct;
+#include "baseserialclass.h"
 
-class PfeifferSerialclass : public QObject
+class PfeifferSerialclass : public BaseSerialClass
 {
     Q_OBJECT
 private:
-    PfeifferSerialStruct *private_struct;
-
     QSerialPort *serial_port;
-    QTimer reconnect_timer;
-    QTimer event_timer;
-
-    QString port_name;
-    QSerialPort::BaudRate baud_rate;
+    QByteArray buffer;
 
 public:
     enum SensorStatus {
@@ -62,12 +56,8 @@ public:
     PfeifferSerialclass(QObject *parent = 0);
     ~PfeifferSerialclass();
 
-    QString PortName() const;
-    QSerialPort::FlowControl FlowControl() const;
-    QSerialPort::BaudRate BaudRate() const;
-    QSerialPort::StopBits StopBits() const;
-    QSerialPort::DataBits DataBits() const;
-    QSerialPort::Parity Parity() const;
+    bool deviceConnected() const;
+    bool deviceDisconnected() const;
 
 signals:
     void ErrorString(const QString &error_string, bool status);
@@ -82,10 +72,7 @@ signals:
                                   float pressure);
 
 public slots:
-    void processSerialRequestQueue();
-
-    void setPortName(const QString &port_name);
-    void setBaudRate(const QSerialPort::BaudRate baud_rate);
+    void processRequestQueue();
 
     void requestReadSensorStatuses();
     void requestReadSensorControl(Sensor sensor);
@@ -98,12 +85,14 @@ public slots:
                                    float switch_off_value);
 
     bool checkState();
+    void manageReply();
 
     void connectDevice();
     void disconnectDevice();
 
-private slots:
-    void ManageReply();
+
+
+    bool processPending() const;
 
 private:
     bool manageSensorStatusReply();
