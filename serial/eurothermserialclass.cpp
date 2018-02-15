@@ -1083,8 +1083,8 @@ void EurothermSerialClass::manageReply()
         emit CurrentSetpointValue(server_address, Setpoint1, value_float32);
         break;
     case SP2:
-        break;
         emit CurrentSetpointValue(server_address, Setpoint2, value_float32);
+        break;
     case RM_SP:
         emit RemoteSetpoint(server_address, value_float32);
         break;

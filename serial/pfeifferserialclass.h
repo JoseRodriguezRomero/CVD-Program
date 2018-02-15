@@ -133,8 +133,6 @@ public slots:
     void connectDevice();
     void disconnectDevice();
 
-
-
     bool processPending() const;
 
 private:

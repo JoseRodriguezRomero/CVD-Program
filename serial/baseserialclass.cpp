@@ -183,7 +183,6 @@ void BaseSerialClass::eventLoop()
         processRequestQueue();
     }
 
-
     if (failed_attempts >= MAX_FAILED_ATTEMPTS)
     {
         failed_attempts = 0;
