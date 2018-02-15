@@ -1,5 +1,3 @@
-#include <QDebug>
-
 #define MAX_FAILED_ATTEMPTS         3
 
 #include "baseserialclass.h"

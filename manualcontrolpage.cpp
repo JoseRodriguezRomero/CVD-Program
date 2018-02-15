@@ -1,6 +1,5 @@
 #define LABEL_ALIGMENT      Qt::AlignHCenter| Qt::AlignVCenter
 
-#include <QDebug>
 #include "manualcontrolpage.h"
 
 ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)

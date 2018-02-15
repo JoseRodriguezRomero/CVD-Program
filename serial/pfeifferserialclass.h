@@ -1,9 +1,6 @@
 #ifndef PFEIFFERSERIALCLASS_H
 #define PFEIFFERSERIALCLASS_H
 
-#include <QTimer>
-#include <QVector>
-#include <QObject>
 #include <QSerialPort>
 
 #include "baseserialclass.h"
@@ -78,6 +75,15 @@ public:
         OneDecade
     };
 
+    enum Relay {
+        Relay1,
+        Relay2,
+        Relay3,
+        Relay4,
+        Relay5,
+        Relay6
+    };
+
 public:
     PfeifferSerialclass(QObject *parent = 0);
     ~PfeifferSerialclass();
@@ -102,6 +108,10 @@ signals:
     void unitsOfMeasurement(const Units units);
     void baragraphMode(BaragraphMode bar_mode);
     void displayContrast(const int contrast);
+    void screenSave(int interval);
+    void thresholdValueSetting(const Relay relay, const Sensor sensor,
+                               const float lower_threshold,
+                               const float upper_threshold);
 
 public slots:
     void processRequestQueue();
@@ -114,8 +124,11 @@ public slots:
     void requestReadUnitsOfMeasurement();
     void requestReadBaragraph();
     void requestReadDisplayContrast();
+    void requestReadScreenSave();
+    void requestReadThresholdValueSetting(const Relay relay);
 
-    void requestWriteSensorStatus(const Sensor sensor, const SensorStatus status);
+    void requestWriteSensorStatus(const Sensor sensor,
+                                  const SensorStatus status);
     void requestWriteSensorControl(const Sensor sensor,
                                    const ControllingSource switch_on,
                                    const ControllingSource switch_off,
@@ -126,6 +139,11 @@ public slots:
     void requestWriteUnitsOfMeasurement(const Units units);
     void requestWriteBaragraph(BaragraphMode bar_mode);
     void requestWriteDisplayContrast(const int contrast); // (0->min) (20->max)
+    void requestWriteScreenSave(const int interval); // in hours
+    void requestWriteThresholdValueSetting(const Relay relay,
+                                           const Sensor sensor,
+                                           const float lower_threshold,
+                                           const float upper_threshold);
 
     bool checkState();
     void manageReply();
@@ -144,6 +162,8 @@ private:
     bool manageUnitsOfMeasurementReply();
     bool manageBaragraphModeReply();
     bool manageReplyDisplayContrast();
+    bool manageScreenSaveReply();
+    bool manageThresholdValueSettingReply();
 };
 
 #endif // PFEIFFERSERIALCLASS_H

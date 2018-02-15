@@ -1,8 +1,6 @@
 #ifndef EUROTHERMSERIALCLASS_H
 #define EUROTHERMSERIALCLASS_H
 
-#include <QTimer>
-#include <QObject>
 #include <QVariant>
 #include <QSerialPort>
 #include <QModbusReply>

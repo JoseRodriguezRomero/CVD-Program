@@ -1,5 +1,3 @@
-#include <QDebug>
-
 #include "eurothermserialclass.h"
 
 #define MAX_QUEUE_LEN           20
@@ -788,8 +786,9 @@ void EurothermSerialClass::requestWriteRelativeCoolCh2Gain(
                            HoldingRegister,WriteRequest,r2g);
 }
 
-void EurothermSerialClass::requestWriteTimerStatus(const int server_address,
-                                                   const EurothermSerialClass::TimerStatus status)
+void EurothermSerialClass::requestWriteTimerStatus(
+        const int server_address,
+        const EurothermSerialClass::TimerStatus status)
 {
     int status_sel;
 

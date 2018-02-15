@@ -1,5 +1,3 @@
-#include <QDebug>
-
 #include "mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent) :

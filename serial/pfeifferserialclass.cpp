@@ -319,7 +319,44 @@ void PfeifferSerialclass::requestReadBaragraph()
 
 void PfeifferSerialclass::requestReadDisplayContrast()
 {
-    addReadRequestToQueue(request_queue, DCC_ID,DCC);
+    addReadRequestToQueue(request_queue,DCC_ID,DCC);
+}
+
+void PfeifferSerialclass::requestReadScreenSave()
+{
+    addReadRequestToQueue(request_queue,DCS_ID,DCS);
+}
+
+void PfeifferSerialclass::requestReadThresholdValueSetting(const Relay relay)
+{
+    QVector<char> mneumonic(SP_X_);
+    char mneumonic_idd;
+
+    switch (relay) {
+    case Sensor1:
+        mneumonic_idd = 'A';
+        break;
+    case Sensor2:
+        mneumonic_idd = 'B';
+        break;
+    case Sensor3:
+        mneumonic_idd = 'C';
+        break;
+    case Sensor4:
+        mneumonic_idd = 'D';
+        break;
+    case Sensor5:
+        mneumonic_idd = 'E';
+        break;
+    case Sensor6:
+        mneumonic_idd = 'F';
+        break;
+    default:
+        return;
+    }
+
+    mneumonic.append(mneumonic_idd);
+    addReadRequestToQueue(request_queue,SPX_ID,mneumonic);
 }
 
 void PfeifferSerialclass::requestWriteSensorStatus(
@@ -583,6 +620,101 @@ void PfeifferSerialclass::requestWriteDisplayContrast(const int contrast)
     addWriteRequestToQueue(request_queue,DCC_ID,DCC,args);
 }
 
+void PfeifferSerialclass::requestWriteScreenSave(const int interval)
+{
+    if (interval < 0 || interval > 99)
+    {
+        return;
+    }
+
+    QString interval_str = QString::number(interval);
+    QVector<char> args;
+    args.append(interval_str.at(0).toLatin1());
+    args.append(interval_str.at(1).toLatin1());
+
+    addWriteRequestToQueue(request_queue,DCS_ID,DCS,args);
+}
+
+void PfeifferSerialclass::requestWriteThresholdValueSetting(
+        const PfeifferSerialclass::Relay relay,
+        const PfeifferSerialclass::Sensor sensor,
+        const float lower_threshold, const float upper_threshold)
+{
+    QVector<char> mneumonic(SP_X_);
+    char mneumonic_idd;
+
+    switch (relay) {
+    case Relay1:
+        mneumonic_idd = 'A';
+        break;
+    case Relay2:
+        mneumonic_idd = 'B';
+        break;
+    case Relay3:
+        mneumonic_idd = 'C';
+        break;
+    case Relay4:
+        mneumonic_idd = 'D';
+        break;
+    case Relay5:
+        mneumonic_idd = 'E';
+        break;
+    case Relay6:
+        mneumonic_idd = 'F';
+        break;
+    default:
+        return;
+    }
+
+    mneumonic.append(mneumonic_idd);
+
+    QVector<char> args;
+    char sensor_idd;
+
+    switch (sensor) {
+    case Sensor1:
+        sensor_idd = '0';
+        break;
+    case Sensor2:
+        sensor_idd = '1';
+        break;
+    case Sensor3:
+        sensor_idd = '2';
+        break;
+    case Sensor4:
+        sensor_idd = '3';
+        break;
+    case Sensor5:
+        sensor_idd = '4';
+        break;
+    case Sensor6:
+        sensor_idd = '5';
+        break;
+    default:
+        return;
+    }
+    args.append(sensor_idd);
+
+    QString lower_threshold_string;
+    QString upper_threshold_string;
+
+    lower_threshold_string.sprintf("%1.1E",lower_threshold);
+    upper_threshold_string.sprintf("%1.1E",upper_threshold);
+
+    QString *threshold_strings[2] = {&lower_threshold_string,
+                                     &upper_threshold_string};
+
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 7; j++)
+        {
+            args.append(threshold_strings[i]->at(j).toLatin1());
+        }
+    }
+
+    addWriteRequestToQueue(request_queue,SPX_ID,mneumonic,args);
+}
+
 bool PfeifferSerialclass::checkState()
 {
     QString reply_string;
@@ -743,6 +875,7 @@ void PfeifferSerialclass::manageReply()
                 valid_reply = manageDecimalDigitsReply();
                 break;
             case DCS_ID:
+                valid_reply = manageScreenSaveReply();
                 break;
             case DGS_ID:
                 break;
@@ -776,6 +909,7 @@ void PfeifferSerialclass::manageReply()
                 valid_reply = manageSensorStatusReply();
                 break;
             case SPX_ID:
+                valid_reply = manageThresholdValueSettingReply();
                 break;
             case SPS_ID:
                 break;
@@ -1153,9 +1287,9 @@ bool PfeifferSerialclass::manageMeasurementPointNamesReply()
     }
 
     QString aux_name;
-    MeasurementPoint measure_points[6] = {MeasurePoint1, MeasurePoint2,
-                                          MeasurePoint3, MeasurePoint4,
-                                          MeasurePoint5, MeasurePoint6};
+    MeasurementPoint measure_points[6] = { MeasurePoint1, MeasurePoint2,
+                                           MeasurePoint3, MeasurePoint4,
+                                           MeasurePoint5, MeasurePoint6 };
 
     for (int i = 0; i < 6; i++)
     {
@@ -1246,5 +1380,100 @@ bool PfeifferSerialclass::manageReplyDisplayContrast()
     }
 
     emit displayContrast(contrast);
+    return true;
+}
+
+bool PfeifferSerialclass::manageScreenSaveReply()
+{
+    if (buffer.length() != 4)
+    {
+        return false;
+    }
+
+    int interval = 0;
+
+    for (int i = 0; i < 2; i++)
+    {
+        char aux_arg = buffer.at(i) - '0';
+
+        if (buffer.at(i) < 0 || buffer.at(i) > 9)
+        {
+            return false;
+        }
+
+        interval += static_cast<int>(aux_arg*pow(10,1-i));
+    }
+
+    if (interval > 99)
+    {
+        return false;
+    }
+
+    emit screenSave(interval);
+    return true;
+}
+
+bool PfeifferSerialclass::manageThresholdValueSettingReply()
+{
+    if (buffer.length() != 20)
+    {
+        return false;
+    }
+
+    PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
+                request_queue.first());
+
+    Relay relay;
+    char mnenumonic_idd = request->mneumonic.last();
+    switch (mnenumonic_idd) {
+    case 'A':
+        relay = Relay1;
+        break;
+    case 'B':
+        relay = Relay2;
+        break;
+    case 'C':
+        relay = Relay3;
+        break;
+    case 'D':
+        relay = Relay4;
+        break;
+    case 'E':
+        relay = Relay5;
+        break;
+    case 'F':
+        relay = Relay6;
+        break;
+    default:
+        return false;
+    }
+
+    Sensor sensor;
+    char sensor_idd = buffer.at(0);
+    switch (sensor_idd) {
+    case '0':
+        sensor = Sensor1;
+        break;
+    case '1':
+        sensor = Sensor2;
+        break;
+    case '2':
+        sensor = Sensor3;
+        break;
+    case '3':
+        sensor = Sensor4;
+        break;
+    case '4':
+        sensor = Sensor5;
+        break;
+    case '5':
+        sensor = Sensor6;
+        break;
+    default:
+        return false;
+    }
+
+
+
     return true;
 }

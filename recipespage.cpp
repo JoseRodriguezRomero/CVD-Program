@@ -1,4 +1,3 @@
-#include <QDebug>
 #include "recipespage.h"
 
 void InsertStepRow(QTableWidget &parent, QDoubleValidator &validator)
