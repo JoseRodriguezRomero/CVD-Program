@@ -220,7 +220,7 @@ void ManualControlPage::setEurothermSerialClasss(
 
     connect(eurotherm_serial,SIGNAL(PVInputValue(int,float)),
             this,SLOT(setMeasuredTemperature(int,float)));
-    connect(eurotherm_serial,SIGNAL(TargetSetpoint(int,float)),
+    connect(eurotherm_serial,SIGNAL(targetSetpoint(int,float)),
             this,SLOT(setTemperatureSetpoint(int,float)));
 }
 

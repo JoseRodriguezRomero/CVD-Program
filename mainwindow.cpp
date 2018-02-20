@@ -55,8 +55,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&recipes_page,SIGNAL(RecipeStarted(bool)),this,SLOT(onRecipeStarted(bool)));
     connect(&recipes_page,SIGNAL(RecipePaused(bool)),this,SLOT(onRecipePaused(bool)));
 
-    connect(&eurotherm_serial,SIGNAL(ErrorString(QString,bool)),&eurotherm_status_string,SLOT(setStatusLabel(QString,bool)));
-    connect(&pfeiffer_serial,SIGNAL(ErrorString(QString,bool)),&pfeiffer_status_string,SLOT(setStatusLabel(QString,bool)));
+    connect(&eurotherm_serial,SIGNAL(errorString(QString,bool)),&eurotherm_status_string,SLOT(setStatusLabel(QString,bool)));
+    connect(&pfeiffer_serial,SIGNAL(errorString(QString,bool)),&pfeiffer_status_string,SLOT(setStatusLabel(QString,bool)));
 
     connect(&serial_settings_window,SIGNAL(changePortName(SerialSettingsWindow::Device,QString)),
             this,SLOT(setPortName(SerialSettingsWindow::Device,QString)));
