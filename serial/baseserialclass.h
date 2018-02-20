@@ -67,7 +67,7 @@ public slots:
     void startEventLoop();
 
 signals:
-    void ErrorString(const QString &error_string, bool status);
+    void errorString(const QString &error_string, bool status);
 
 private slots:
     void eventLoop();

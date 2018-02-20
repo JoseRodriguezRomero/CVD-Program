@@ -126,46 +126,46 @@ public slots:
 
 signals:
     void PVInputValue(const int server_address, const float value);
-    void TargetSetpoint(const int server_address, const float setpoint);
-    void ManualOutputValue(const int server_address, const float value);
-    void WorkingOutput(const int server_address, const float value);
-    void WorkingSetpoint(const int server_address, const float setpoint);
-    void ProportionalBand(const int server_address, const float prop_band);
-    void CurrentControlAction(const int server_address, const ControlAction control_action);
-    void IntegralTime(const int server_address, const float int_time);
-    void DerivativeTime(const int server_address, const float dev_time);
-    void InputRangeLowLimit(const int server_address, const float low_range);
-    void InputRangeHighLimit(const int server_address, const float high_range);
-    void AlarmThreshold(const int server_address, const int alarm_num, const float a1);
-    void ActiveSetpoint(const int server_address, const Setpoint setpoint);
-    void Channel2Deadband(const int server_address, const float d_band);
-    void CutbackLow(const int server_address, const float cb_lo);
-    void CutbackHigh(const int server_address, const float cb_hi);
-    void RelativeCoolCh2Gain(const int server_address, const float r2g);
-    void CurrentTimerStatus(const int server_address, const TimerStatus t_stat);
-    void CurrentSetpointValue(const int server_address, const Setpoint sp_sel, const float sp);
-    void RemoteSetpoint(const int server_address, const float rm_sp);
-    void LocalTrim(const int server_address, const float rm_sp);
-    void ManualReset(const int server_address, const float mr);
-    void OutputHighLimit(const int server_address, const float op_hi);
-    void OutputLowLimit(const int server_address, const float op_low);
-    void SafeOutputValueforSensorBreak(const int server_address, const float safe);
-    void SetpointRateLimitValue(const int server_address, const float sp_rat);
-    void CalculatedError(const int server_address, const float p_err);
-    void AlarmHysteresis(const int server_address, const int alarm_num, const float a_hys);
-    void AlarmStatus(const int server_address, const int alarm_num, const bool status);     // status == true -> active
-    void AutoManualStatus(const int server_address, const bool status);                     // status == true -> active
-    void SensorBreakStatus(const int server_address, const bool status);                    // status == true -> active
-    void LoopBreakStatus(const int server_address, const bool status);                      // status == true -> active
+    void targetSetpoint(const int server_address, const float setpoint);
+    void manualOutputValue(const int server_address, const float value);
+    void workingOutput(const int server_address, const float value);
+    void workingSetpoint(const int server_address, const float setpoint);
+    void proportionalBand(const int server_address, const float prop_band);
+    void controlAction(const int server_address, const ControlAction control_action);
+    void integralTime(const int server_address, const float int_time);
+    void derivativeTime(const int server_address, const float dev_time);
+    void inputRangeLowLimit(const int server_address, const float low_range);
+    void inputRangeHighLimit(const int server_address, const float high_range);
+    void alarmThreshold(const int server_address, const int alarm_num, const float a1);
+    void activeSetpoint(const int server_address, const Setpoint setpoint);
+    void channel2Deadband(const int server_address, const float d_band);
+    void cutbackLow(const int server_address, const float cb_lo);
+    void cutbackHigh(const int server_address, const float cb_hi);
+    void relativeCoolCh2Gain(const int server_address, const float r2g);
+    void currentTimerStatus(const int server_address, const TimerStatus t_stat);
+    void currentSetpointValue(const int server_address, const Setpoint sp_sel, const float sp);
+    void remoteSetpoint(const int server_address, const float rm_sp);
+    void localTrim(const int server_address, const float rm_sp);
+    void manualReset(const int server_address, const float mr);
+    void outputHighLimit(const int server_address, const float op_hi);
+    void outputLowLimit(const int server_address, const float op_low);
+    void safeOutputValueforSensorBreak(const int server_address, const float safe);
+    void setpointRateLimitValue(const int server_address, const float sp_rat);
+    void calculatedError(const int server_address, const float p_err);
+    void alarmHysteresis(const int server_address, const int alarm_num, const float a_hys);
+    void alarmStatus(const int server_address, const int alarm_num, const bool status);     // status == true -> active
+    void autoManualStatus(const int server_address, const bool status);                     // status == true -> active
+    void sensorBreakStatus(const int server_address, const bool status);                    // status == true -> active
+    void loopBreakStatus(const int server_address, const bool status);                      // status == true -> active
     void CTLowLoadCurrentAlarmStatus(const int server_address, const bool status);          // status == true -> active
     void CTHighLeakageCurrentAlarmStatus(const int server_address, const bool status);      // status == true -> active
-    void ProgramEndStatus(const int server_address, const bool status);                     // stauts == true -> active
+    void programEndStatus(const int server_address, const bool status);                     // stauts == true -> active
     void PVOverrangeStatus(const int server_address, const bool status);                    // status == true -> active
     void CTOvercurrentAlarmStatus(const int server_address, const bool status);             // status == true -> active
-    void NewAlarmStatus(const int server_address, const bool status);                       // status == true -> active
-    void TimeRampRunningStatus(const int server_address, const bool status);                // status == true -> active
-    void RemoteSPFailStatus(const int server_address, const bool status);                   // status == true -> active
-    void AutotuneStatus(const int server_address, const bool status);                       // status == true -> active
+    void newAlarmStatus(const int server_address, const bool status);                       // status == true -> active
+    void timeRampRunningStatus(const int server_address, const bool status);                // status == true -> active
+    void remoteSPFailStatus(const int server_address, const bool status);                   // status == true -> active
+    void autotuneStatus(const int server_address, const bool status);                       // status == true -> active
 };
 
 #endif // EUROTHERMSERIALCLASS_H

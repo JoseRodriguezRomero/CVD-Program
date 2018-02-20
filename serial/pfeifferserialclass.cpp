@@ -223,7 +223,7 @@ void PfeifferSerialclass::processRequestQueue()
     msg.append('\n');
 
     serial_port->flush();
-    qDebug() << msg;
+    qDebug() << msg;        // seems correctly formatted...
 
     if (serial_port->isWritable())
     {
@@ -736,7 +736,7 @@ bool PfeifferSerialclass::checkState()
 
     if (serial_port == nullptr)
     {
-        emit ErrorString("Pfeiffer: CONNECTION ERROR", false);
+        emit errorString("Pfeiffer: CONNECTION ERROR", false);
         disconnectDevice();
         event_timer.stop();
         reconnect_timer.start();
@@ -780,7 +780,7 @@ bool PfeifferSerialclass::checkState()
         break;
     }
 
-    emit ErrorString("Pfeiffer: " + reply_string, status);
+    emit errorString("Pfeiffer: " + reply_string, status);
     emit deviceConnected(serial_port->error());
 
     return status;
@@ -807,7 +807,7 @@ void PfeifferSerialclass::connectDevice()
 
     if (serial_port->error() == QSerialPort::NoError)
     {
-        emit ErrorString("Pfeiffer: CONNECTED", true);
+        emit errorString("Pfeiffer: CONNECTED", true);
         emit deviceConnected(serial_port->error());
         event_timer.start();
         reconnect_timer.stop();
@@ -819,7 +819,7 @@ void PfeifferSerialclass::connectDevice()
         serial_port->close();
         serial_port->deleteLater();
         serial_port = nullptr;
-        emit ErrorString("Pfeiffer: CONNECTION ERROR", false);
+        emit errorString("Pfeiffer: CONNECTION ERROR", false);
         emit deviceConnected(QSerialPort::NotOpenError);
         event_timer.stop();
         reconnect_timer.start();

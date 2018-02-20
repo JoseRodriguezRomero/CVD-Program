@@ -402,13 +402,13 @@ bool EurothermSerialClass::checkState()
 
     if (modbus_client == nullptr)
     {
-        emit ErrorString("Eurotherm: CONNECTION ERROR",false);
+        emit errorString("Eurotherm: CONNECTION ERROR",false);
         return false;
     }
 
     if (modbus_client->state() != QModbusDevice::ConnectedState)
     {
-        emit ErrorString("Eurotherm: CONNECTION ERROR",false);
+        emit errorString("Eurotherm: CONNECTION ERROR",false);
         return false;
     }
 
@@ -445,7 +445,7 @@ bool EurothermSerialClass::checkState()
         break;
     }
 
-    emit ErrorString("Eurotherm: " + reply_string,status);
+    emit errorString("Eurotherm: " + reply_string,status);
 
     return status;
 }
@@ -987,19 +987,19 @@ void EurothermSerialClass::manageReply()
         emit PVInputValue(server_address, value_float32);
         break;
     case TG_SP:
-        emit TargetSetpoint(server_address,value_float32);
+        emit targetSetpoint(server_address,value_float32);
         break;
     case MAN_OP:
-        emit ManualOutputValue(server_address, value_float32);
+        emit manualOutputValue(server_address, value_float32);
         break;
     case WRK_OP:
-        emit WorkingOutput(server_address, value_float32);
+        emit workingOutput(server_address, value_float32);
         break;
     case WRK_SP:
-        emit WorkingSetpoint(server_address, value_float32);
+        emit workingSetpoint(server_address, value_float32);
         break;
     case PB:
-        emit ProportionalBand(server_address, value_float32);
+        emit proportionalBand(server_address, value_float32);
         break;
     case CTRL_A:
         ControlAction control_action;
@@ -1015,25 +1015,25 @@ void EurothermSerialClass::manageReply()
             return;
         }
 
-        emit CurrentControlAction(server_address,control_action);
+        emit controlAction(server_address,control_action);
         break;
     case TI:
-        emit IntegralTime(server_address, value_float32);
+        emit integralTime(server_address, value_float32);
         break;
     case TD:
-        emit DerivativeTime(server_address, value_float32);
+        emit derivativeTime(server_address, value_float32);
         break;
     case RNG_LO:
-        emit InputRangeLowLimit(server_address, value_float32);
+        emit inputRangeLowLimit(server_address, value_float32);
         break;
     case RNG_HI:
-        emit InputRangeLowLimit(server_address, value_float32);
+        emit inputRangeLowLimit(server_address, value_float32);
         break;
     case A1:
-        emit AlarmThreshold(server_address, 1, value_float32);
+        emit alarmThreshold(server_address, 1, value_float32);
         break;
     case A2:
-        emit AlarmThreshold(server_address, 2, value_float32);
+        emit alarmThreshold(server_address, 2, value_float32);
         break;
     case SP_SEL:
         Setpoint setpoint;
@@ -1047,19 +1047,19 @@ void EurothermSerialClass::manageReply()
         default:
             return;
         }
-        emit ActiveSetpoint(server_address, setpoint);
+        emit activeSetpoint(server_address, setpoint);
         break;
     case D_BAND:
-        emit Channel2Deadband(server_address, value_float32);
+        emit channel2Deadband(server_address, value_float32);
         break;
     case CB_LO:
-        emit CutbackLow(server_address, value_float32);
+        emit cutbackLow(server_address, value_float32);
         break;
     case CB_HI:
-        emit CutbackHigh(server_address, value_float32);
+        emit cutbackHigh(server_address, value_float32);
         break;
     case R2G:
-        emit RelativeCoolCh2Gain(server_address, value_float32);
+        emit relativeCoolCh2Gain(server_address, value_float32);
         break;
     case T_STAT:
         TimerStatus status;
@@ -1079,31 +1079,31 @@ void EurothermSerialClass::manageReply()
             return;
         }
 
-        emit CurrentTimerStatus(server_address, status);
+        emit currentTimerStatus(server_address, status);
         break;
     case SP1:
-        emit CurrentSetpointValue(server_address, Setpoint1, value_float32);
+        emit currentSetpointValue(server_address, Setpoint1, value_float32);
         break;
     case SP2:
-        emit CurrentSetpointValue(server_address, Setpoint2, value_float32);
+        emit currentSetpointValue(server_address, Setpoint2, value_float32);
         break;
     case RM_SP:
-        emit RemoteSetpoint(server_address, value_float32);
+        emit remoteSetpoint(server_address, value_float32);
         break;
     case LOC_T:
-        emit LocalTrim(server_address, value_float32);
+        emit localTrim(server_address, value_float32);
         break;
     case MR:
-        emit ManualReset(server_address, value_float32);
+        emit manualReset(server_address, value_float32);
         break;
     case OP_HI:
-        emit OutputHighLimit(server_address, value_float32);
+        emit outputHighLimit(server_address, value_float32);
         break;
     case OP_LO:
-        emit OutputLowLimit(server_address, value_float32);
+        emit outputLowLimit(server_address, value_float32);
         break;
     case SAFE:
-        emit SafeOutputValueforSensorBreak(server_address, value_float32);
+        emit safeOutputValueforSensorBreak(server_address, value_float32);
         break;
     case SP_RAT:
         break;
@@ -1122,28 +1122,28 @@ void EurothermSerialClass::manageReply()
         {
             if (value_int16 & (1 << i))
             {
-                emit AlarmStatus(server_address, i, true);
+                emit alarmStatus(server_address, i, true);
             }
             else
             {
-                emit AlarmStatus(server_address, i, false);
+                emit alarmStatus(server_address, i, false);
             }
         }
 
         void (EurothermSerialClass::* foo[12])(const int, const bool);
 
-        foo[0] = &EurothermSerialClass::AutoManualStatus;
-        foo[1] = &EurothermSerialClass::SensorBreakStatus;
-        foo[2] = &EurothermSerialClass::LoopBreakStatus;
+        foo[0] = &EurothermSerialClass::autoManualStatus;
+        foo[1] = &EurothermSerialClass::sensorBreakStatus;
+        foo[2] = &EurothermSerialClass::loopBreakStatus;
         foo[3] = &EurothermSerialClass::CTLowLoadCurrentAlarmStatus;
         foo[4] = &EurothermSerialClass::CTHighLeakageCurrentAlarmStatus;
-        foo[5] = &EurothermSerialClass::ProgramEndStatus;
+        foo[5] = &EurothermSerialClass::programEndStatus;
         foo[6] = &EurothermSerialClass::PVOverrangeStatus;
         foo[7] = &EurothermSerialClass::CTOvercurrentAlarmStatus;
-        foo[8] = &EurothermSerialClass::NewAlarmStatus;
-        foo[9] = &EurothermSerialClass::TimeRampRunningStatus;
-        foo[10] = &EurothermSerialClass::RemoteSPFailStatus;
-        foo[11] = &EurothermSerialClass::AutotuneStatus;
+        foo[8] = &EurothermSerialClass::newAlarmStatus;
+        foo[9] = &EurothermSerialClass::timeRampRunningStatus;
+        foo[10] = &EurothermSerialClass::remoteSPFailStatus;
+        foo[11] = &EurothermSerialClass::autotuneStatus;
 
         for (int i = 4; i < 16; i++)
         {
