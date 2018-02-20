@@ -43,7 +43,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(exit,SIGNAL(clicked(bool)),this,SLOT(close()));
     connect(serial_settings,SIGNAL(clicked(bool)),this,SLOT(openSerialSettingsWindow()));
 
-    connect(&global_timer,SIGNAL(timeout()),this,SLOT(UpdateWorkingSetPoints()));
+    connect(&global_timer,SIGNAL(timeout()),this,SLOT(eventLoop()));
 
     connect(&recipes_page,SIGNAL(RecipeStarted(bool)),&manual_control_page,SLOT(setBlockedCommands(bool)));
     connect(&recipes_page,SIGNAL(RecipeStarted(bool)),serial_settings,SLOT(setDisabled(bool)));
@@ -56,6 +56,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&recipes_page,SIGNAL(RecipePaused(bool)),this,SLOT(onRecipePaused(bool)));
 
     connect(&eurotherm_serial,SIGNAL(ErrorString(QString,bool)),&eurotherm_status_string,SLOT(setStatusLabel(QString,bool)));
+    connect(&pfeiffer_serial,SIGNAL(ErrorString(QString,bool)),&pfeiffer_status_string,SLOT(setStatusLabel(QString,bool)));
 
     connect(&serial_settings_window,SIGNAL(changePortName(SerialSettingsWindow::Device,QString)),
             this,SLOT(setPortName(SerialSettingsWindow::Device,QString)));
@@ -68,10 +69,12 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&serial_settings_window,SIGNAL(changeDataBits(SerialSettingsWindow::Device,QSerialPort::DataBits)),
             this,SLOT(setDataBits(SerialSettingsWindow::Device,QSerialPort::DataBits)));
 
-    eurotherm_serial.startEventLoop();
     manual_control_page.setEurothermSerialClasss(&eurotherm_serial);
+    manual_control_page.setPfeifferSerialClass(&pfeiffer_serial);
 
-    manual_control_page.setEurothermSerialClasss(&eurotherm_serial);
+    eurotherm_serial.startEventLoop();
+    pfeiffer_serial.startEventLoop();
+
     recipes_page.setEurothermSerialClass(&eurotherm_serial);
     logs_page.setEurothermSerialClass(&eurotherm_serial);
 
@@ -85,6 +88,7 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     eurotherm_serial.disconnectDevice();
+    pfeiffer_serial.disconnectDevice();
 }
 
 void MainWindow::setPortName(const SerialSettingsWindow::Device device,
@@ -227,17 +231,16 @@ void MainWindow::openSerialSettingsWindow()
     serial_settings_window.show();
 }
 
-void MainWindow::UpdateWorkingSetPoints()
+void MainWindow::eventLoop()
 {
     for (int i = 0; i < 3; i++)
     {
         eurotherm_serial.requestReadPVInputValue(i+1);
         eurotherm_serial.requestReadTargetSetpoint(i+1);
     }
-}
 
-void MainWindow::UpdateWorkingValues()
-{
+    pfeiffer_serial.requestReadStatusAndPressure(PfeifferSerialclass::Sensor6);
+    //pfeiffer_serial.requestReadBaragraph();
 }
 
 void MainWindow::onRecipePaused(bool recipe_paused)

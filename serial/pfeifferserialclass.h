@@ -92,24 +92,29 @@ public:
     bool deviceDisconnected() const;
 
 signals:
-    void ErrorString(const QString &error_string, bool status);
     void deviceConnected(QSerialPort::SerialPortError);
 
-    void sensorStatus(Sensor sensor, SensorStatus status);
-    void sensorControl(Sensor sensor, ControllingSource switch_on,
-                       ControllingSource switch_off, float switch_on_value,
-                       float switch_off_value);
-    void sensorPressureAndStautus(Sensor sensor,
-                                  PressureMeasurementStatus staus,
-                                  float pressure);
-    void decimalDigits(const DecimalDigits digits);
-    void measurementPointName(const MeasurementPoint measure_point,
-                              const QString &name);
-    void unitsOfMeasurement(const Units units);
-    void baragraphMode(BaragraphMode bar_mode);
+    void sensorStatus(const PfeifferSerialclass::Sensor sensor,
+                      const PfeifferSerialclass::SensorStatus status);
+    void sensorControl(const PfeifferSerialclass::Sensor sensor,
+                       const PfeifferSerialclass::ControllingSource switch_on,
+                       const PfeifferSerialclass::ControllingSource switch_off,
+                       float switch_on_value, float switch_off_value);
+    void sensorPressureAndStautus(
+            const PfeifferSerialclass::Sensor sensor,
+            const PfeifferSerialclass::PressureMeasurementStatus staus,
+            float pressure);
+    void decimalDigits(const PfeifferSerialclass::DecimalDigits digits);
+    void measurementPointName(
+            const PfeifferSerialclass::MeasurementPoint measure_point,
+            const QString &name);
+    void unitsOfMeasurement(
+            const PfeifferSerialclass::PfeifferSerialclass::Units units);
+    void baragraphMode(const PfeifferSerialclass::BaragraphMode bar_mode);
     void displayContrast(const int contrast);
     void screenSave(int interval);
-    void thresholdValueSetting(const Relay relay, const Sensor sensor,
+    void thresholdValueSetting(const PfeifferSerialclass::Relay relay,
+                               const PfeifferSerialclass::Sensor sensor,
                                const float lower_threshold,
                                const float upper_threshold);
 
@@ -117,8 +122,8 @@ public slots:
     void processRequestQueue();
 
     void requestReadSensorStatuses();
-    void requestReadSensorControl(const Sensor sensor);
-    void requestReadStatusAndPressure(const Sensor sensor);
+    void requestReadSensorControl(const PfeifferSerialclass::Sensor sensor);
+    void requestReadStatusAndPressure(const PfeifferSerialclass::Sensor sensor);
     void requestReadDecimalDigits();
     void requestReadMeasurementPointNames();
     void requestReadUnitsOfMeasurement();
@@ -127,23 +132,25 @@ public slots:
     void requestReadScreenSave();
     void requestReadThresholdValueSetting(const Relay relay);
 
-    void requestWriteSensorStatus(const Sensor sensor,
-                                  const SensorStatus status);
-    void requestWriteSensorControl(const Sensor sensor,
-                                   const ControllingSource switch_on,
-                                   const ControllingSource switch_off,
-                                   const float switch_on_value,
-                                   const float switch_off_value);
-    void requestWriteDecimalDigits(const DecimalDigits digits);
+    void requestWriteSensorStatus(
+            const PfeifferSerialclass::Sensor sensor,
+            const PfeifferSerialclass::SensorStatus status);
+    void requestWriteSensorControl(
+            const PfeifferSerialclass::Sensor sensor,
+            const PfeifferSerialclass::ControllingSource switch_on,
+            const PfeifferSerialclass::ControllingSource switch_off,
+            const float switch_on_value, const float switch_off_value);
+    void requestWriteDecimalDigits(
+            const PfeifferSerialclass::DecimalDigits digits);
     void requestWriteMeasurementPointNames(const QString names[6]);
     void requestWriteUnitsOfMeasurement(const Units units);
-    void requestWriteBaragraph(BaragraphMode bar_mode);
+    void requestWriteBaragraph(PfeifferSerialclass::BaragraphMode bar_mode);
     void requestWriteDisplayContrast(const int contrast); // (0->min) (20->max)
     void requestWriteScreenSave(const int interval); // in hours
-    void requestWriteThresholdValueSetting(const Relay relay,
-                                           const Sensor sensor,
-                                           const float lower_threshold,
-                                           const float upper_threshold);
+    void requestWriteThresholdValueSetting(
+            const PfeifferSerialclass::Relay relay,
+            const PfeifferSerialclass::Sensor sensor,
+            const float lower_threshold, const float upper_threshold);
 
     bool checkState();
     void manageReply();

@@ -290,14 +290,17 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
 {
     this->setParent(parent);
 
-    port_name = "COM8";
+    port_name = "COM1";
     baud_rate = QSerialPort::Baud19200;
     port_parity = QSerialPort::NoParity;
     stop_bits = QSerialPort::OneStop;
     data_bits = QSerialPort::Data8;
 
-    event_timer.setInterval(30);
     reconnect_timer.setInterval(1000);
+    event_timer.setInterval(30);        // large intervals for the event timer
+                                        // lead to floaded request queues and
+                                        // too fast intervals lead to mostly
+                                        // corrupt messages in the serial port
 
     modbus_client = nullptr;  // never forgetti mom's spaghetti
     reply = nullptr;

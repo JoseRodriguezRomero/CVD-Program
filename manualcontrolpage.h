@@ -12,6 +12,7 @@
 #include <QDoubleSpinBox>
 
 #include "serial/eurothermserialclass.h"
+#include "serial/pfeifferserialclass.h"
 
 class ManualControlPage : public QWidget
 {
@@ -36,10 +37,12 @@ private:
     QLineEdit gauge_pressure;
 
     EurothermSerialClass *eurotherm_serial;
+    PfeifferSerialclass *pfeiffer_serial;
 
 public:
     explicit ManualControlPage(QWidget *parent = 0);
     void setEurothermSerialClasss(EurothermSerialClass *eurotherm_serial);
+    void setPfeifferSerialClass(PfeifferSerialclass *pfeiffer_serial);
 
 signals:
     void newTemperatureSetpointSet(const int server_address,
@@ -50,6 +53,10 @@ public slots:
                                 const float temperature);
     void setTemperatureSetpoint(const int server_address,
                                 const float setpoint);
+
+    void setPfeifferPressure(PfeifferSerialclass::Sensor sensor,
+                             PfeifferSerialclass::PressureMeasurementStatus status,
+                             const float pressure);
 
     void setBlockedCommands(bool block);
     void setUnBlockedCommands(bool unblock);

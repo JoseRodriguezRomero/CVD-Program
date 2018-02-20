@@ -1,5 +1,7 @@
 #include "pfeifferserialclass.h"
 
+#include <QDebug>
+
 #define MAX_QUEUE_LEN           20
 
 #define PFEIFFER_FLOW_CONTROL       QSerialPort::NoFlowControl
@@ -144,10 +146,10 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
     reconnect_timer.setInterval(1000);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(30);
+    event_timer.setInterval(20);
     event_timer.setSingleShot(false);
 
-    port_name = "COM7";
+    port_name = "COM8";
     baud_rate = QSerialPort::Baud9600;
     stop_bits = PFEIFFER_STOP_BITS;
     data_bits = PFEIFFER_DATA_BITS;
@@ -194,6 +196,11 @@ bool PfeifferSerialclass::deviceDisconnected() const
 
 void PfeifferSerialclass::processRequestQueue()
 {
+    if (!serial_port->isOpen())
+    {
+        return;
+    }
+
     PfeifferRequestStruct *request =static_cast<PfeifferRequestStruct*>(
                 request_queue.first());
 
@@ -212,17 +219,24 @@ void PfeifferSerialclass::processRequestQueue()
     {
         msg.append(args.at(i));
     }
-
     msg.append('\r');
     msg.append('\n');
 
+    serial_port->flush();
+    qDebug() << msg;
+
     if (serial_port->isWritable())
     {
+        serial_port->flush();
         serial_port->write(msg);
 
-        if (serial_port->waitForBytesWritten())
+        if (serial_port->waitForBytesWritten(500))
         {
             request->pending = true;
+        }
+        else
+        {
+            serial_port->flush();
         }
     }
 }
@@ -789,18 +803,23 @@ void PfeifferSerialclass::connectDevice()
     serial_port->setStopBits(stop_bits);
     serial_port->setDataBits(data_bits);
     serial_port->setParity(port_parity);
+    serial_port->open(QIODevice::ReadWrite);
 
-    if (serial_port->open(QIODevice::ReadWrite))
+    if (serial_port->error() == QSerialPort::NoError)
     {
         emit ErrorString("Pfeiffer: CONNECTED", true);
         emit deviceConnected(serial_port->error());
         event_timer.start();
         reconnect_timer.stop();
+        serial_port->flush();
+        serial_port->setDataTerminalReady(true);
     }
+    else
     {
+        serial_port->close();
         serial_port->deleteLater();
         serial_port = nullptr;
-        emit ErrorString("Pfeiffer: CONNECTION ERROR", true);
+        emit ErrorString("Pfeiffer: CONNECTION ERROR", false);
         emit deviceConnected(QSerialPort::NotOpenError);
         event_timer.stop();
         reconnect_timer.start();
@@ -835,26 +854,29 @@ void PfeifferSerialclass::manageReply()
     PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
                 request_queue.first());
 
-    if (!(serial_port->isReadable() && serial_port->isDataTerminalReady()))
+    if (serial_port->bytesAvailable() < 1)
     {
         return;
     }
 
-    QByteArray read_buffer = serial_port->readAll();
-    serial_port->flush();
+    buffer.append(serial_port->readAll());
+    qDebug() << buffer;
 
-    if ((read_buffer.at(read_buffer.length()-2) != '\r') ||
-            (read_buffer.at(read_buffer.length()-1) != '\n'))
+    if (buffer.length() < 2)
+    {
+        return;
+    }
+
+    if ((buffer.at(buffer.length()-2) != '\r') ||
+            (buffer.at(buffer.length()-1) != '\n'))
     {
         request->pending = false;
-        event_timer.start();
     }
 
     if (request->enquiry)
     {
         if (request->enquirying)
         {
-            buffer = read_buffer;
             bool valid_reply = true;
 
             switch (request->mneumonic_id) {
@@ -977,8 +999,7 @@ void PfeifferSerialclass::manageReply()
     {
         delete request;
         request_queue.remove(0);
-        request = static_cast<PfeifferRequestStruct*>(
-                    request_queue.first());
+        request = static_cast<PfeifferRequestStruct*>(request_queue.first());
         request->pending = false;
     }
 }
@@ -1159,9 +1180,7 @@ bool PfeifferSerialclass::manageSensorControlReply()
         switch_off_value_string.append(buffer.at(i+10));
     }
 
-    bool switch_on_cast;
-    bool switch_off_cast;
-
+    bool switch_on_cast, switch_off_cast;
     float switch_on_value = switch_on_value_string.toFloat(&switch_on_cast);
     float switch_off_value = switch_on_value_string.toFloat(&switch_off_cast);
 
@@ -1473,7 +1492,24 @@ bool PfeifferSerialclass::manageThresholdValueSettingReply()
         return false;
     }
 
+    QString thresholds[2];
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 7; j++)
+        {
+            thresholds[i].append(buffer.at(1+j+i*7));
+        }
+    }
 
+    bool lower_threshold_cast, upper_threshold_cast;
+    float lower_threshold = thresholds[0].toFloat(&lower_threshold_cast);
+    float upper_threshold = thresholds[1].toFloat(&upper_threshold_cast);
 
-    return true;
+    if (lower_threshold && upper_threshold)
+    {
+        emit thresholdValueSetting(relay,sensor,
+                                   lower_threshold,upper_threshold);
+    }
+
+    return lower_threshold && upper_threshold;
 }

@@ -195,17 +195,25 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
     temp_setpoint_right.setMinimum(0);
 
     eurotherm_serial = nullptr;
+    pfeiffer_serial = nullptr;
+
+    connect(&temp_setpoint_left,SIGNAL(editingFinished()),this,
+            SLOT(requestSetTemperatureSetpoints()));
+    connect(&temp_setpoint_center,SIGNAL(editingFinished()),this,
+            SLOT(requestSetTemperatureSetpoints()));
+    connect(&temp_setpoint_right,SIGNAL(editingFinished()),this,
+            SLOT(requestSetTemperatureSetpoints()));
 }
 
 void ManualControlPage::setEurothermSerialClasss(
         EurothermSerialClass *eurotherm_serial)
 {
-    if (eurotherm_serial != nullptr)
+    if (this->eurotherm_serial != nullptr)
     {
         disconnect(eurotherm_serial,SIGNAL(PVInputValue(int,float)),
-                this,SLOT(setMeasuredTemperature(int,float)));
+                   this,SLOT(setMeasuredTemperature(int,float)));
         disconnect(eurotherm_serial,SIGNAL(TargetSetpoint(int,float)),
-                this,SLOT(setTemperatureSetpoint(int,float)));
+                   this,SLOT(setTemperatureSetpoint(int,float)));
     }
 
     this->eurotherm_serial = eurotherm_serial;
@@ -214,13 +222,19 @@ void ManualControlPage::setEurothermSerialClasss(
             this,SLOT(setMeasuredTemperature(int,float)));
     connect(eurotherm_serial,SIGNAL(TargetSetpoint(int,float)),
             this,SLOT(setTemperatureSetpoint(int,float)));
+}
 
-    connect(&temp_setpoint_left,SIGNAL(editingFinished()),this,
-            SLOT(requestSetTemperatureSetpoints()));
-    connect(&temp_setpoint_center,SIGNAL(editingFinished()),this,
-            SLOT(requestSetTemperatureSetpoints()));
-    connect(&temp_setpoint_right,SIGNAL(editingFinished()),this,
-            SLOT(requestSetTemperatureSetpoints()));
+void ManualControlPage::setPfeifferSerialClass(
+        PfeifferSerialclass *pfeiffer_serial)
+{
+    if (this->pfeiffer_serial != nullptr)
+    {
+        disconnect(pfeiffer_serial,SIGNAL(sensorPressureAndStautus(PfeifferSerialclass::Sensor,PfeifferSerialclass::PressureMeasurementStatus,float)),
+                   this,SLOT(setPfeifferPressure(PfeifferSerialclass::SensorStatus,float)));
+    }
+
+    connect(pfeiffer_serial,SIGNAL(sensorPressureAndStautus(PfeifferSerialclass::Sensor,PfeifferSerialclass::PressureMeasurementStatus,float)),
+            this,SLOT(setPfeifferPressure(PfeifferSerialclass::Sensor,PfeifferSerialclass::PressureMeasurementStatus,float)));
 }
 
 void ManualControlPage::setMeasuredTemperature(const int server_address,
@@ -246,7 +260,7 @@ void ManualControlPage::setMeasuredTemperature(const int server_address,
 }
 
 void ManualControlPage::setTemperatureSetpoint(const int server_address,
-                                                  const float setpoint)
+                                               const float setpoint)
 {
     QDoubleSpinBox *temp_setpoint;
 
@@ -272,6 +286,12 @@ void ManualControlPage::setTemperatureSetpoint(const int server_address,
     temp_setpoint->setValue(setpoint);
 }
 
+void ManualControlPage::setPfeifferPressure(PfeifferSerialclass::Sensor sensor,
+        PfeifferSerialclass::PressureMeasurementStatus status, const float pressure)
+{
+    gauge_pressure.setText(QString::number(pressure,'E'));
+}
+
 void ManualControlPage::setBlockedCommands(bool block)
 {
     temp_setpoint_left.setDisabled(block);
@@ -292,7 +312,7 @@ void ManualControlPage::setUnBlockedCommands(bool unblock)
 }
 
 void ManualControlPage::requestSetTemperatureSetpoints()
-{
+{ 
     QDoubleSpinBox *sender_widget = static_cast<QDoubleSpinBox*>(sender());
 
     if (!sender_widget->hasFocus())

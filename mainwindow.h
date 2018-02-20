@@ -45,17 +45,21 @@ public:
     ~MainWindow();
 
 public slots:
-    void setPortName(const SerialSettingsWindow::Device device, const QString &port_name);
-    void setBaudRate(const SerialSettingsWindow::Device device, const QSerialPort::BaudRate baud_rate);
-    void setStopBits(const SerialSettingsWindow::Device device, const QSerialPort::StopBits stop_bits);
-    void setDataBits(const SerialSettingsWindow::Device device, const QSerialPort::DataBits data_bits);
-    void setParity(const SerialSettingsWindow::Device device, const QSerialPort::Parity parity);
+    void setPortName(const SerialSettingsWindow::Device device,
+                     const QString &port_name);
+    void setBaudRate(const SerialSettingsWindow::Device device,
+                     const QSerialPort::BaudRate baud_rate);
+    void setStopBits(const SerialSettingsWindow::Device device,
+                     const QSerialPort::StopBits stop_bits);
+    void setDataBits(const SerialSettingsWindow::Device device,
+                     const QSerialPort::DataBits data_bits);
+    void setParity(const SerialSettingsWindow::Device device,
+                   const QSerialPort::Parity parity);
 
 private slots:
     void openSerialSettingsWindow();
 
-    void UpdateWorkingSetPoints();
-    void UpdateWorkingValues();
+    void eventLoop();
 
     void onRecipePaused(bool recipe_paused);
     void onRecipeStarted(bool recipe_stopped);
