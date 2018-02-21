@@ -11,6 +11,7 @@ class PfeifferSerialclass : public BaseSerialClass
 private:
     QSerialPort *serial_port;
     QByteArray buffer;
+    QByteArray overflow_buffer;
 
 public:
     enum SensorStatus {

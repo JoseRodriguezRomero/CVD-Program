@@ -146,7 +146,7 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
     reconnect_timer.setInterval(1000);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(20);
+    event_timer.setInterval(10);
     event_timer.setSingleShot(false);
 
     port_name = "COM8";
@@ -220,10 +220,8 @@ void PfeifferSerialclass::processRequestQueue()
         msg.append(args.at(i));
     }
     msg.append('\r');
-    msg.append('\n');
 
     serial_port->flush();
-    qDebug() << msg;        // seems correctly formatted...
 
     if (serial_port->isWritable())
     {
@@ -812,7 +810,6 @@ void PfeifferSerialclass::connectDevice()
         event_timer.start();
         reconnect_timer.stop();
         serial_port->flush();
-        serial_port->setDataTerminalReady(true);
     }
     else
     {
@@ -860,17 +857,30 @@ void PfeifferSerialclass::manageReply()
     }
 
     buffer.append(serial_port->readAll());
-    qDebug() << buffer;
 
     if (buffer.length() < 2)
     {
         return;
     }
 
+    for (int i = 1; i < buffer.length(); i++)
+    {
+        if ((buffer.at(i) == '\n') && (buffer.at(i-1) == '\r'))
+        {
+            overflow_buffer.clear();
+            for (int j = i+1; j < buffer.length(); j++)
+            {
+                overflow_buffer.append(buffer.at(j));
+            }
+
+            buffer.remove(i+1,buffer.length()-i);
+        }
+    }
+
     if ((buffer.at(buffer.length()-2) != '\r') ||
             (buffer.at(buffer.length()-1) != '\n'))
     {
-        request->pending = false;
+        return;
     }
 
     if (request->enquiry)
@@ -964,9 +974,12 @@ void PfeifferSerialclass::manageReply()
             {
                 delete request;
                 request_queue.remove(0);
-                request = static_cast<PfeifferRequestStruct*>(
-                            request_queue.first());
-                request->pending = false;
+                if (request_queue.length() > 0)
+                {
+                    request = static_cast<PfeifferRequestStruct*>(
+                                request_queue.first());
+                    request->pending = false;
+                }
             }
             else
             {
@@ -981,12 +994,21 @@ void PfeifferSerialclass::manageReply()
                 QByteArray enq;
                 enq.append('\x05');
 
-                serial_port->flush();
-                serial_port->write(enq);
-
-                if (serial_port->waitForBytesWritten())
+                if (buffer.at(0) != '\x06')
                 {
-                    request->enquirying = true;
+                    buffer.clear();
+                    return;
+                }
+                else
+                {
+                    buffer.clear();
+                    serial_port->flush();
+                    serial_port->write(enq);
+
+                    if (serial_port->waitForBytesWritten())
+                    {
+                        request->enquirying = true;
+                    }
                 }
             }
             else
@@ -1198,7 +1220,7 @@ bool PfeifferSerialclass::manageStatusAndPressureReply()
     PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
                 request_queue.first());
 
-    if (buffer.length() != 11)
+    if (buffer.length() != 12)
     {
         return false;
     }
@@ -1264,7 +1286,7 @@ bool PfeifferSerialclass::manageStatusAndPressureReply()
 
     for (int i = 0; i < 8; i++)
     {
-        pressure_value_string.append(buffer.at(i+1));
+        pressure_value_string.append(buffer.at(i+2));
     }
 
     pressure_value = pressure_value_string.toFloat(&pressure_cast);

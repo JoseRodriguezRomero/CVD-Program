@@ -241,6 +241,8 @@ void MainWindow::eventLoop()
 
     pfeiffer_serial.requestReadStatusAndPressure(PfeifferSerialclass::Sensor6);
     //pfeiffer_serial.requestReadBaragraph();
+
+    //pfeiffer_serial.requestWriteDisplayContrast(10);
 }
 
 void MainWindow::onRecipePaused(bool recipe_paused)
