@@ -50,7 +50,7 @@
 /* Mneumonic identifiers */
 
 #define BAU_ID          1
-#define CAX_ID          2
+#define CA_X_ID         2
 #define CID_ID          3
 #define DCB_ID          4
 #define DCC_ID          5
@@ -64,13 +64,13 @@
 #define NAD_ID          13
 #define OFC_ID          14
 #define PNR_ID          15
-#define PRX_ID          16
+#define PR_X_ID         16
 #define PUC_ID          17
 #define RSX_ID          18
 #define SAV_ID          19
-#define SCX_ID          20
+#define SC_X_ID         20
 #define SEN_ID          21
-#define SPX_ID          22
+#define SP_X_ID         22
 #define SPS_ID          23
 #define TAI_ID          24
 #define TAS_ID          25
@@ -84,6 +84,43 @@
 #define WDT_ID          33
 
 /* Mneumonic identifiers */
+
+/* Argument formats */
+
+#define SEN_ARGS_FORMAT         "x,x,x,x,x,x"
+#define SC_X_ARGS_FORMAT        "x,x,x.xxE±yy,x.xxE±yy"
+#define PR_X_ARGS_FORMAT        "x,x.xxxEsx"
+#define DCD_ARGS_FORMAT         "x"
+#define CID_ARGS_FORMAT         "xxxx,xxxx,xxxx,xxxx,xxxx,xxxx"
+#define UNI_ARGS_FORMAT         "x"
+#define DCB_ARGS_FORMAT         "x"
+#define DCC_ARGS_FORMAT         "xx"
+#define DCS_ARGS_FORMAT         "xx"
+#define SP_X_ARGS_FORMAT        "x,x.xxEsx,x.xxEsx"
+#define SPS_ARGS_FORMAT         "x,x,x,x,x,x"
+#define PUC_ARGS_FORMAT         "x,x,x,x,x,x"
+#define LOC_ARGS_FORMAT         "x"
+#define FIL_ARGS_FORMAT         "x,x,x,x,x,x"
+#define CA_X_ARGS_FORMAT        "x.xxx"
+#define OFC_ARGS_FORMAT         "x,x,x,x,x,x"
+#define FSR_ARGS_FORMAT         "x,x,x,x,x,x"
+#define DGS_ARGS_FORMAT         "0,0,0,x,x,x"
+#define RSX_ARGS_FORMAT         "x"
+#define BAU_ARGS_FORMAT         "x"
+#define NAD_ARGS_FORMAT         "xx"
+#define ERR_ARGS_FORMAT         "xxxxx,xxxxx"
+#define PNR_ARGS_FORMAT         "BGxxxxxx-x"
+#define TDI_ARGS_FORMAT         "xxxxx,xxxxx"
+#define TKB_ARGS_FORMAT         "xx"
+#define TRA_ARGS_FORMAT         "xxxxx,xxxxx"
+#define TEP_ARGS_FORMAT         "xxxxx,xxxxx"
+#define TEE_ARGS_FORMAT         "xxxxx,xxxxx"
+#define TAI_ARGS_FORMAT         "x.xxx,x.xxx,x.xxx,x.xxx,x.xxx,x.xxx"
+#define TAS_ARGS_FORMAT         "x.xxx,x.xxx,x.xxx,x.xxx,x.xxx,x.xxx"
+#define TID_ARGS_FORMAT         "xxxxxxxxx,xxxxxxxxx,xxxxxxxxx,xxxxxxxxx,xxxxxxxxx,xxxxxxxxx"
+#define WDT_ARGS_FORMAT         "x"
+
+/* Argument formats */
 
 struct PfeifferRequestStruct
 {
@@ -137,6 +174,37 @@ void addWriteRequestToQueue(QVector<void*> &request_queue,
     request_queue.append(new_request);
 }
 
+bool validArgsFormat(const QByteArray &reply, const char *format,
+                     const bool has_string_termination = true)
+{
+    int len = static_cast<int>(strlen(format));
+    if (has_string_termination)
+    {
+        len += 2;
+
+        if ((reply.at(reply.length()-1) != '\n') &&
+                (reply.at(reply.length()-2) != '\r'))
+        {
+            return false;
+        }
+    }
+
+    if (reply.length() != len)
+    {
+        return false;
+    }
+
+    for (int i = 0; i < len; i++)
+    {
+        if ((format[i] == ',') && (reply.at(i) != ','))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
 {
     this->setParent(parent);
@@ -180,8 +248,8 @@ bool PfeifferSerialclass::deviceConnected() const
 
     QSerialPort::SerialPortError error = serial_port->error();
 
-    if (error == QSerialPort::NotOpenError ||
-            error == QSerialPort::OpenError)
+    if ((error == QSerialPort::NotOpenError) ||
+            (error == QSerialPort::OpenError))
     {
         return false;
     }
@@ -273,7 +341,7 @@ void PfeifferSerialclass::requestReadSensorControl(const Sensor sensor)
     }
 
     mneumonic.append(mneumonic_idd);
-    addReadRequestToQueue(request_queue,SCX_ID,mneumonic);
+    addReadRequestToQueue(request_queue,SC_X_ID,mneumonic);
 }
 
 void PfeifferSerialclass::requestReadStatusAndPressure(
@@ -306,7 +374,7 @@ void PfeifferSerialclass::requestReadStatusAndPressure(
     }
 
     mneumonic.append(mneumonic_idd);
-    addReadRequestToQueue(request_queue,PRX_ID,mneumonic);
+    addReadRequestToQueue(request_queue,PR_X_ID,mneumonic);
 }
 
 void PfeifferSerialclass::requestReadDecimalDigits()
@@ -368,7 +436,7 @@ void PfeifferSerialclass::requestReadThresholdValueSetting(const Relay relay)
     }
 
     mneumonic.append(mneumonic_idd);
-    addReadRequestToQueue(request_queue,SPX_ID,mneumonic);
+    addReadRequestToQueue(request_queue,SP_X_ID,mneumonic);
 }
 
 void PfeifferSerialclass::requestWriteSensorStatus(
@@ -529,7 +597,7 @@ void PfeifferSerialclass::requestWriteSensorControl(
         }
     }
 
-    addWriteRequestToQueue(request_queue,SCX_ID,mneumonic,args);
+    addWriteRequestToQueue(request_queue,SC_X_ID,mneumonic,args);
 }
 
 void PfeifferSerialclass::requestWriteDecimalDigits(
@@ -724,7 +792,7 @@ void PfeifferSerialclass::requestWriteThresholdValueSetting(
         }
     }
 
-    addWriteRequestToQueue(request_queue,SPX_ID,mneumonic,args);
+    addWriteRequestToQueue(request_queue,SP_X_ID,mneumonic,args);
 }
 
 bool PfeifferSerialclass::checkState()
@@ -892,7 +960,7 @@ void PfeifferSerialclass::manageReply()
             switch (request->mneumonic_id) {
             case BAU_ID:
                 break;
-            case CAX_ID:
+            case CA_X_ID:
                 break;
             case CID_ID:
                 valid_reply = manageMeasurementPointNamesReply();
@@ -925,7 +993,7 @@ void PfeifferSerialclass::manageReply()
                 break;
             case PNR_ID:
                 break;
-            case PRX_ID:
+            case PR_X_ID:
                 valid_reply = manageStatusAndPressureReply();
                 break;
             case PUC_ID:
@@ -934,13 +1002,13 @@ void PfeifferSerialclass::manageReply()
                 break;
             case SAV_ID:
                 break;
-            case SCX_ID:
+            case SC_X_ID:
                 valid_reply = manageSensorControlReply();
                 break;
             case SEN_ID:
                 valid_reply = manageSensorStatusReply();
                 break;
-            case SPX_ID:
+            case SP_X_ID:
                 valid_reply = manageThresholdValueSettingReply();
                 break;
             case SPS_ID:
@@ -1028,73 +1096,73 @@ void PfeifferSerialclass::manageReply()
 
 bool PfeifferSerialclass::manageSensorStatusReply()
 {
-    if (buffer.length() == 8)
+    if (!validArgsFormat(buffer,SEN_ARGS_FORMAT))
     {
-        Sensor sensors[6];
-        SensorStatus statuses[6];
-
-        for (int i = 0; i < 6; i++)
-        {
-            Sensor sensor;
-
-            switch (i) {
-            case 0:
-                sensor = Sensor1;
-                break;
-            case 1:
-                sensor = Sensor2;
-                break;
-            case 2:
-                sensor = Sensor3;
-                break;
-            case 3:
-                sensor = Sensor4;
-                break;
-            case 4:
-                sensor = Sensor5;
-                break;
-            case 5:
-                sensor = Sensor6;
-                break;
-            }
-
-            SensorStatus status;
-
-            switch (buffer.at(i)) {
-            case '2':
-                status = On;
-                break;
-            case '1':
-                status = Off;
-                break;
-            default:
-                return false;
-            }
-
-            sensors[i] = sensor;
-            statuses[i] = status;
-        }
-
-        for (int i = 0; i < 6; i++)
-        {
-            emit sensorStatus(sensors[i], statuses[i]);
-        }
-
-        return true;
+        return false;
     }
 
-    return false;
+    Sensor sensors[6];
+    SensorStatus statuses[6];
+
+    for (int i = 0; i < 6; i++)
+    {
+        Sensor sensor;
+
+        switch (i) {
+        case 0:
+            sensor = Sensor1;
+            break;
+        case 1:
+            sensor = Sensor2;
+            break;
+        case 2:
+            sensor = Sensor3;
+            break;
+        case 3:
+            sensor = Sensor4;
+            break;
+        case 4:
+            sensor = Sensor5;
+            break;
+        case 5:
+            sensor = Sensor6;
+            break;
+        }
+
+        SensorStatus status;
+
+        switch (buffer.at(i)) {
+        case '2':
+            status = On;
+            break;
+        case '1':
+            status = Off;
+            break;
+        default:
+            return false;
+        }
+
+        sensors[i] = sensor;
+        statuses[i] = status;
+    }
+
+    for (int i = 0; i < 6; i++)
+    {
+        emit sensorStatus(sensors[i], statuses[i]);
+    }
+
+    return true;
 }
 
 bool PfeifferSerialclass::manageSensorControlReply()
 {
-    PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
-                request_queue.first());
-
-    if (buffer.length() != 20)
+    if (!validArgsFormat(buffer,SC_X_ARGS_FORMAT))
     {
         return false;
     }
+
+    PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
+                request_queue.first());
 
     Sensor sensor;
     char mnenumonic_idd = request->mneumonic.last();
@@ -1217,6 +1285,11 @@ bool PfeifferSerialclass::manageSensorControlReply()
 
 bool PfeifferSerialclass::manageStatusAndPressureReply()
 {
+    if (!validArgsFormat(buffer,PR_X_ARGS_FORMAT))
+    {
+        return false;
+    }
+
     PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
                 request_queue.first());
 
@@ -1301,7 +1374,7 @@ bool PfeifferSerialclass::manageStatusAndPressureReply()
 
 bool PfeifferSerialclass::manageDecimalDigitsReply()
 {
-    if (buffer.length() != 3)
+    if (!validArgsFormat(buffer,DCD_ARGS_FORMAT))
     {
         return false;
     }
@@ -1322,7 +1395,7 @@ bool PfeifferSerialclass::manageDecimalDigitsReply()
 
 bool PfeifferSerialclass::manageMeasurementPointNamesReply()
 {
-    if (buffer.length() != 26)
+    if (!validArgsFormat(buffer,CID_ARGS_FORMAT))
     {
         return false;
     }
@@ -1348,7 +1421,7 @@ bool PfeifferSerialclass::manageMeasurementPointNamesReply()
 
 bool PfeifferSerialclass::manageUnitsOfMeasurementReply()
 {
-    if (buffer.length() != 3)
+    if (!validArgsFormat(buffer,UNI_ARGS_FORMAT))
     {
         return false;
     }
@@ -1372,7 +1445,7 @@ bool PfeifferSerialclass::manageUnitsOfMeasurementReply()
 
 bool PfeifferSerialclass::manageBaragraphModeReply()
 {
-    if (buffer.length() != 3)
+    if (!validArgsFormat(buffer,DCB_ARGS_FORMAT))
     {
         return false;
     }
@@ -1396,7 +1469,7 @@ bool PfeifferSerialclass::manageBaragraphModeReply()
 
 bool PfeifferSerialclass::manageReplyDisplayContrast()
 {
-    if (buffer.length() != 4)
+    if (!validArgsFormat(buffer,DCC_ARGS_FORMAT))
     {
         return false;
     }
@@ -1426,7 +1499,7 @@ bool PfeifferSerialclass::manageReplyDisplayContrast()
 
 bool PfeifferSerialclass::manageScreenSaveReply()
 {
-    if (buffer.length() != 4)
+    if (!validArgsFormat(buffer,DCS_ARGS_FORMAT))
     {
         return false;
     }
@@ -1456,7 +1529,7 @@ bool PfeifferSerialclass::manageScreenSaveReply()
 
 bool PfeifferSerialclass::manageThresholdValueSettingReply()
 {
-    if (buffer.length() != 20)
+    if (!validArgsFormat(buffer,SP_X_ARGS_FORMAT))
     {
         return false;
     }
