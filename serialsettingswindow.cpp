@@ -496,6 +496,7 @@ void SerialSettingsWindow::apply()
         emit changeParity(device,parity);
         emit changeStopBits(device,stop_bits);
         emit changeDataBits(device,data_bits);
+        emit resetDevice(device);
     }
 
     this->close();

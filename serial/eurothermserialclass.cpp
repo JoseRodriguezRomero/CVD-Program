@@ -1,5 +1,7 @@
 #include "eurothermserialclass.h"
 
+#include <QDebug>
+
 #define MAX_QUEUE_LEN           20
 
 #define IEEE_REGION             0x8000
@@ -297,13 +299,14 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     data_bits = QSerialPort::Data8;
 
     reconnect_timer.setInterval(1000);
-    event_timer.setInterval(30);        // large intervals for the event timer
+    event_timer.setInterval(80);        // large intervals for the event timer
                                         // lead to floaded request queues and
                                         // too fast intervals lead to mostly
                                         // corrupt messages in the serial port
 
     modbus_client = nullptr;  // never forgetti mom's spaghetti
     reply = nullptr;
+
 }
 
 EurothermSerialClass::~EurothermSerialClass()
@@ -368,13 +371,13 @@ void EurothermSerialClass::connectDevice()
 
     if (modbus_client->state() == QModbusDevice::ConnectedState)
     {
-        reconnect_timer.stop();
-        event_timer.start();
+        emit stopReconnectTimer();
+        emit startEventLoopTimer();
     }
     else
     {
-        event_timer.stop();
-        reconnect_timer.start();
+        emit stopEventLoopTimer();
+        emit startReconnectTimer();
     }
 }
 
@@ -388,8 +391,8 @@ void EurothermSerialClass::disconnectDevice()
     modbus_client->disconnectDevice();
     modbus_client->deleteLater();
 
-    event_timer.stop();
-    reconnect_timer.stop();
+    emit stopEventLoopTimer();
+    emit stopReconnectTimer();
 
     modbus_client = nullptr;
     reply = nullptr;

@@ -95,80 +95,54 @@ bool BaseSerialClass::deviceDisconnected() const
     return !deviceConnected();
 }
 
-void BaseSerialClass::stopEventTimer(const bool stop)
-{
-    if (stop)
-    {
-        event_timer.stop();
-    }
-    else
-    {
-        event_timer.start();
-    }
-}
-
-void BaseSerialClass::stopReconnectTimer(const bool stop)
-{
-    if (stop)
-    {
-        reconnect_timer.stop();
-    }
-    else
-    {
-        reconnect_timer.start();
-    }
-}
-
-void BaseSerialClass::startEventTimer(const bool start)
-{
-    stopEventTimer(!start);
-}
-
-void BaseSerialClass::startReconnectTimer(const bool start)
-{
-    stopReconnectTimer(!start);
-}
-
 void BaseSerialClass::startEventLoop()
 {
     connect(&event_timer,SIGNAL(timeout()),this,SLOT(eventLoop()));
     connect(&reconnect_timer,SIGNAL(timeout()),this,SLOT(connectDevice()));
 
-    reconnect_timer.setSingleShot(false);
-    event_timer.setSingleShot(false);
+    connect(this,SIGNAL(startReconnectTimer()),&reconnect_timer,SLOT(start()));
+    connect(this,SIGNAL(stopReconnectTimer()),&reconnect_timer,SLOT(stop()));
+    connect(this,SIGNAL(startEventLoopTimer()),&event_timer,SLOT(start()));
+    connect(this,SIGNAL(stopEventLoopTimer()),&event_timer,SLOT(stop()));
 
     connectDevice();
 
     if (!checkState())
     {
         disconnectDevice();
-        reconnect_timer.start();
+        emit startReconnectTimer();
+        emit stopEventLoopTimer();
     }
     else
     {
-        event_timer.start();
-        reconnect_timer.stop();
+        emit startEventLoopTimer();
+        emit stopReconnectTimer();
     }
 }
 
 void BaseSerialClass::eventLoop()
 {
+    QMutex mutex;
+    mutex.lock();
+
     if (!deviceConnected())
     {
-        event_timer.stop();
-        reconnect_timer.start();
+        emit stopEventLoopTimer();
+        emit startReconnectTimer();
     }
 
     if (!checkState())
     {
         disconnectDevice();
-        reconnect_timer.start();
-        event_timer.stop();
+        emit startReconnectTimer();
+        emit stopEventLoopTimer();
+        mutex.unlock();
         return;
     }
 
     if (request_queue.length() < 1)
     {
+        mutex.unlock();
         return;
     }
 
@@ -185,7 +159,10 @@ void BaseSerialClass::eventLoop()
     {
         failed_attempts = 0;
         disconnectDevice();
-        reconnect_timer.start();
-        event_timer.stop();
+
+        emit startReconnectTimer();
+        emit stopEventLoopTimer();
     }
+
+    mutex.unlock();
 }

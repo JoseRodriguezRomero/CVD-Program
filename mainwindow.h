@@ -33,8 +33,9 @@ private:
     StatusString mks_status_string;
     StatusString pfeiffer_status_string;
 
-    EurothermSerialClass eurotherm_serial;
-    PfeifferSerialclass pfeiffer_serial;
+    QThread serial_thread;
+    EurothermSerialClass *eurotherm_serial;
+    PfeifferSerialclass *pfeiffer_serial;
 
     SerialSettingsWindow serial_settings_window;
 
@@ -55,6 +56,7 @@ public slots:
                      const QSerialPort::DataBits data_bits);
     void setParity(const SerialSettingsWindow::Device device,
                    const QSerialPort::Parity parity);
+    void resetConnection(const SerialSettingsWindow::Device device);
 
 private slots:
     void openSerialSettingsWindow();
@@ -63,6 +65,11 @@ private slots:
 
     void onRecipePaused(bool recipe_paused);
     void onRecipeStarted(bool recipe_stopped);
+
+signals:
+    void readPressureAndStatus(const PfeifferSerialclass::Sensor sensor);
+    void readReadPVInputValue(const int server_address);
+    void readReadTargetSetpoint(const int server_address);
 };
 
 #endif // MAINWINDOW_H

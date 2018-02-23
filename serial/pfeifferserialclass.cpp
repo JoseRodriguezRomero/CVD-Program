@@ -11,39 +11,39 @@
 
 /* Mneumonics */
 
-#define BAU             {'B','A','U'}
-#define CA_X_           {'C','A'}
-#define CID             {'C','I','D'}
-#define DCB             {'D','C','B'}
-#define DCC             {'D','C','C'}
-#define DCD             {'D','C','D'}
-#define DCS             {'D','C','S'}
-#define DGS             {'D','G','S'}
-#define ERR             {'E','R','R'}
-#define FIL             {'F','I','L'}
-#define FSR             {'F','S','R'}
-#define LOC             {'L','O','C'}
-#define NAD             {'N','A','D'}
-#define OFC             {'O','F','C'}
-#define PNR             {'P','N','R'}
-#define PR_X_           {'P','R'}
-#define PUC             {'P','U','C'}
-#define RSX             {'R','S','X'}
-#define SAV             {'S','A','V'}
-#define SC_X_           {'S','C'}
-#define SEN             {'S','E','N'}
-#define SP_X_           {'S','P'}
-#define SPS             {'S','P','S'}
-#define TAI             {'T','A','I'}
-#define TAS             {'T','A','S'}
-#define TDI             {'T','D','I'}
-#define TEE             {'T','E','E'}
-#define TEP             {'T','E','P'}
-#define TID             {'T','I','D'}
-#define TKB             {'T','K','B'}
-#define TRA             {'T','R','A'}
-#define UNI             {'U','N','I'}
-#define WDT             {'W','D','T'}
+#define BAU             "BAU"
+#define CA_X_           "CA"
+#define CID             "CID"
+#define DCB             "DCB"
+#define DCC             "DCC"
+#define DCD             "DCD"
+#define DCS             "DCS"
+#define DGS             "DGS"
+#define ERR             "ERR"
+#define FIL             "FIL"
+#define FSR             "FSR"
+#define LOC             "LOC"
+#define NAD             "NAD"
+#define OFC             "OFC"
+#define PNR             "PNR"
+#define PR_X_           "PR"
+#define PUC             "PUC"
+#define RSX             "RSX"
+#define SAV             "SAV"
+#define SC_X_           "SC"
+#define SEN             "SEN"
+#define SP_X_           "SP"
+#define SPS             "SPS"
+#define TAI             "TAI"
+#define TAS             "TAS"
+#define TDI             "TDI"
+#define TEE             "TEE"
+#define TEP             "TEP"
+#define TID             "TID"
+#define TKB             "TKB"
+#define TRA             "TRA"
+#define UNI             "UNI"
+#define WDT             "WDT"
 
 /* Mneumonics */
 
@@ -125,20 +125,25 @@
 struct PfeifferRequestStruct
 {
     int mneumonic_id;
-    QVector<char> mneumonic;
+    QString mneumonic;
     bool pending;
     bool enquiry;
     bool enquirying;
-    QVector<char> args;
+    QVector<QString> args;
 };
 
 void addReadRequestToQueue(QVector<void*> &request_queue,
-                           int mneumonic_id, QVector<char> mneumonic)
+                           int mneumonic_id, QString mneumonic)
 {
     while (request_queue.length() > MAX_QUEUE_LEN)
     {
         delete request_queue.at(0);
         request_queue.removeAt(0);
+    }
+
+    if (mneumonic.length() != 3)
+    {
+        return;
     }
 
     PfeifferRequestStruct *new_request = new PfeifferRequestStruct;
@@ -153,13 +158,18 @@ void addReadRequestToQueue(QVector<void*> &request_queue,
 }
 
 void addWriteRequestToQueue(QVector<void*> &request_queue,
-                            int mneumonic_id, QVector<char> mneumonic,
-                            const QVector<char> &args)
+                            int mneumonic_id, QString mneumonic,
+                            const QVector<QString> &args)
 {
     while (request_queue.length() > MAX_QUEUE_LEN)
     {
         delete request_queue.at(0);
         request_queue.removeAt(0);
+    }
+
+    if (mneumonic.length() != 3)
+    {
+        return;
     }
 
     PfeifferRequestStruct *new_request = new PfeifferRequestStruct;
@@ -169,7 +179,11 @@ void addWriteRequestToQueue(QVector<void*> &request_queue,
     new_request->enquiry = true;
     new_request->enquirying = false;
     new_request->args.clear();
-    new_request->args.append(args);
+
+    for (int i = 0; i < args.length(); i++)
+    {
+        new_request->args.append(args.at(i));
+    }
 
     request_queue.append(new_request);
 }
@@ -272,22 +286,27 @@ void PfeifferSerialclass::processRequestQueue()
     PfeifferRequestStruct *request =static_cast<PfeifferRequestStruct*>(
                 request_queue.first());
 
-    QVector<char> mneumonic = request->mneumonic;
     QByteArray msg;
     msg.clear();
 
-    for (int i = 0; i < mneumonic.length(); i++)
+    for (int i = 0; i < 3; i++)
     {
-        msg.append(mneumonic.at(i));
+        msg.append(request->mneumonic.at(i).toLatin1());
     }
 
-    QVector<char> args = request->args;
-
-    for (int i = 0; i < args.length(); i++)
+    int arg_count = request->args.length();
+    for (int i = 0; i < arg_count; i++)
     {
-        msg.append(args.at(i));
+        msg.append(',');
+        QString arg = request->args.at(i);
+
+        for (int j = 0; j < arg.length(); j++)
+        {
+            msg.append(arg.at(j).toLatin1());
+        }
     }
     msg.append('\r');
+    msg.append('\n');
 
     serial_port->flush();
 
@@ -314,7 +333,7 @@ void PfeifferSerialclass::requestReadSensorStatuses()
 
 void PfeifferSerialclass::requestReadSensorControl(const Sensor sensor)
 {
-    QVector<char> mneumonic(SC_X_);
+    QString mneumonic(SC_X_);
     char mneumonic_idd;
 
     switch (sensor) {
@@ -347,7 +366,7 @@ void PfeifferSerialclass::requestReadSensorControl(const Sensor sensor)
 void PfeifferSerialclass::requestReadStatusAndPressure(
         const Sensor sensor)
 {
-    QVector<char> mneumonic(PR_X_);
+    QString mneumonic(PR_X_);
     char mneumonic_idd;
 
     switch (sensor) {
@@ -409,7 +428,7 @@ void PfeifferSerialclass::requestReadScreenSave()
 
 void PfeifferSerialclass::requestReadThresholdValueSetting(const Relay relay)
 {
-    QVector<char> mneumonic(SP_X_);
+    QString mneumonic(SP_X_);
     char mneumonic_idd;
 
     switch (relay) {
@@ -443,10 +462,10 @@ void PfeifferSerialclass::requestWriteSensorStatus(
         const PfeifferSerialclass::Sensor sensor,
         const PfeifferSerialclass::SensorStatus status)
 {
-    QVector<char> statuses;
+    QVector<QString> args;
     for (int i = 0; i < 6; i++)
     {
-        statuses[i] = '0';
+        args.append(QString('0'));
     }
 
     int sensor_num;
@@ -475,16 +494,16 @@ void PfeifferSerialclass::requestWriteSensorStatus(
 
     switch (status) {
     case PfeifferSerialclass::On:
-        statuses[sensor_num] = '2';
+        args[sensor_num] = QString('2');
         break;
     case PfeifferSerialclass::Off:
-        statuses[sensor_num] = '1';
+        args[sensor_num] = QString('1');
         break;
     default:
         return;
     }
 
-    addWriteRequestToQueue(request_queue,SEN_ID,SEN,statuses);
+    addWriteRequestToQueue(request_queue,SEN_ID,SEN,args);
 }
 
 void PfeifferSerialclass::requestWriteSensorControl(
@@ -493,8 +512,8 @@ void PfeifferSerialclass::requestWriteSensorControl(
         const PfeifferSerialclass::ControllingSource switch_off,
         const float switch_on_value, const float switch_off_value)
 {
-    QVector<char> mneumonic(SC_X_);
-    QVector<char> args;
+    QString mneumonic(SC_X_);
+    QVector<QString> args;
 
     switch (sensor) {
     case Sensor::Sensor1:
@@ -521,31 +540,31 @@ void PfeifferSerialclass::requestWriteSensorControl(
 
     switch (switch_on) {
     case Sensor1Control:
-        args.append('0');
+        args.append(QString('0'));
         break;
     case Sensor2Control:
-        args.append('1');
+        args.append(QString('1'));
         break;
     case Sensor3Control:
-        args.append('2');
+        args.append(QString('2'));
         break;
     case Sensor4Control:
-        args.append('3');
+        args.append(QString('3'));
         break;
     case Sensor5Control:
-        args.append('4');
+        args.append(QString('4'));
         break;
     case Sensor6Control:
-        args.append('5');
+        args.append(QString('5'));
         break;
     case ExternalControl:
-        args.append('6');
+        args.append(QString('6'));
         break;
     case ManualControl:
-        args.append('7');
+        args.append(QString('7'));
         break;
     case HotStart:
-        args.append('8');
+        args.append(QString('8'));
         break;
     default:
         return;
@@ -553,49 +572,41 @@ void PfeifferSerialclass::requestWriteSensorControl(
 
     switch (switch_off) {
     case Sensor1Control:
-        args.append('0');
+        args.append(QString('0'));
         break;
     case Sensor2Control:
-        args.append('1');
+        args.append(QString('1'));
         break;
     case Sensor3Control:
-        args.append('2');
+        args.append(QString('2'));
         break;
     case Sensor4Control:
-        args.append('3');
+        args.append(QString('3'));
         break;
     case Sensor5Control:
-        args.append('4');
+        args.append(QString('4'));
         break;
     case Sensor6Control:
-        args.append('5');
+        args.append(QString('5'));
         break;
     case ExternalControl:
-        args.append('6');
+        args.append(QString('6'));
         break;
     case ManualControl:
-        args.append('7');
+        args.append(QString('7'));
         break;
     default:
         return;
     }
 
-    QString switch_on_value_string;
-    QString switch_off_value_string;
+    QString switch_on_value_string("");
+    QString switch_off_value_string("");
 
     switch_on_value_string.sprintf("%1.1E",switch_on_value);
     switch_off_value_string.sprintf("%1.1E",switch_off_value);
 
-    QString *value_args[2] = {&switch_on_value_string,
-                              &switch_off_value_string};
-
-    for (int i = 0; i < 2; i++)
-    {
-        for (int j = 0; j < 7; j++)
-        {
-            args.append(value_args[i]->at(j).toLatin1());
-        }
-    }
+    args.append(switch_on_value_string);
+    args.append(switch_off_value_string);
 
     addWriteRequestToQueue(request_queue,SC_X_ID,mneumonic,args);
 }
@@ -603,14 +614,14 @@ void PfeifferSerialclass::requestWriteSensorControl(
 void PfeifferSerialclass::requestWriteDecimalDigits(
         const PfeifferSerialclass::DecimalDigits digits)
 {
-    QVector<char> arg;
+    QVector<QString> arg;
 
     switch (digits) {
     case TwoDigits:
-        arg.append('2');
+        arg.append(QString('2'));
         break;
     case ThreeDigits:
-        arg.append('3');
+        arg.append(QString('3'));
         break;
     default:
         return;
@@ -622,20 +633,11 @@ void PfeifferSerialclass::requestWriteDecimalDigits(
 void PfeifferSerialclass::requestWriteMeasurementPointNames(
         const QString names[6])
 {
-    QVector<char> args;
+    QVector<QString> args;
 
     for (int i = 0; i < 6; i++)
     {
-        QString aux_name = names[i];
-
-        while (aux_name.length() < 4) {
-            aux_name.append(' ');
-        }
-
-        for (int j = 0; j < 4; j++)
-        {
-            args.append(aux_name.at(j).toLatin1());
-        }
+        args.append(names[i]);
     }
 
     addWriteRequestToQueue(request_queue,CID_ID,CID,args);
@@ -644,17 +646,17 @@ void PfeifferSerialclass::requestWriteMeasurementPointNames(
 void PfeifferSerialclass::requestWriteUnitsOfMeasurement(
         const PfeifferSerialclass::Units units)
 {
-    QVector<char> arg;
+    QVector<QString> arg;
 
     switch (units) {
     case mBar:
-        arg.append('0');
+        arg.append(QString('0'));
         break;
     case Torr:
-        arg.append('1');
+        arg.append(QString('1'));
         break;
     case Pascal:
-        arg.append('2');
+        arg.append(QString('2'));
         break;
     default:
         return;
@@ -666,17 +668,17 @@ void PfeifferSerialclass::requestWriteUnitsOfMeasurement(
 void PfeifferSerialclass::requestWriteBaragraph(
         PfeifferSerialclass::BaragraphMode bar_mode)
 {
-    QVector<char> arg;
+    QVector<QString> arg;
 
     switch (bar_mode) {
     case BaragraphOff:
-        arg.append('0');
+        arg.append(QString('0'));
         break;
     case MeasurementRange:
-        arg.append('1');
+        arg.append(QString('1'));
         break;
     case OneDecade:
-        arg.append('2');
+        arg.append(QString('2'));
         break;
     default:
         return;
@@ -692,12 +694,10 @@ void PfeifferSerialclass::requestWriteDisplayContrast(const int contrast)
         return;
     }
 
-    QString contrast_str = QString::number(contrast);
-    QVector<char> args;
-    args.append(contrast_str.at(0).toLatin1());
-    args.append(contrast_str.at(1).toLatin1());
+    QVector<QString> arg;
+    arg.append(QString::number(contrast));
 
-    addWriteRequestToQueue(request_queue,DCC_ID,DCC,args);
+    addWriteRequestToQueue(request_queue,DCC_ID,DCC,arg);
 }
 
 void PfeifferSerialclass::requestWriteScreenSave(const int interval)
@@ -707,12 +707,10 @@ void PfeifferSerialclass::requestWriteScreenSave(const int interval)
         return;
     }
 
-    QString interval_str = QString::number(interval);
-    QVector<char> args;
-    args.append(interval_str.at(0).toLatin1());
-    args.append(interval_str.at(1).toLatin1());
+    QVector<QString> arg;
+    arg.append(QString::number(interval));
 
-    addWriteRequestToQueue(request_queue,DCS_ID,DCS,args);
+    addWriteRequestToQueue(request_queue,DCS_ID,DCS,arg);
 }
 
 void PfeifferSerialclass::requestWriteThresholdValueSetting(
@@ -720,7 +718,7 @@ void PfeifferSerialclass::requestWriteThresholdValueSetting(
         const PfeifferSerialclass::Sensor sensor,
         const float lower_threshold, const float upper_threshold)
 {
-    QVector<char> mneumonic(SP_X_);
+    QString mneumonic(SP_X_);
     char mneumonic_idd;
 
     switch (relay) {
@@ -745,10 +743,9 @@ void PfeifferSerialclass::requestWriteThresholdValueSetting(
     default:
         return;
     }
-
     mneumonic.append(mneumonic_idd);
 
-    QVector<char> args;
+    QVector<QString> args;
     char sensor_idd;
 
     switch (sensor) {
@@ -773,7 +770,7 @@ void PfeifferSerialclass::requestWriteThresholdValueSetting(
     default:
         return;
     }
-    args.append(sensor_idd);
+    args.append(QString(sensor_idd));
 
     QString lower_threshold_string;
     QString upper_threshold_string;
@@ -781,16 +778,8 @@ void PfeifferSerialclass::requestWriteThresholdValueSetting(
     lower_threshold_string.sprintf("%1.1E",lower_threshold);
     upper_threshold_string.sprintf("%1.1E",upper_threshold);
 
-    QString *threshold_strings[2] = {&lower_threshold_string,
-                                     &upper_threshold_string};
-
-    for (int i = 0; i < 2; i++)
-    {
-        for (int j = 0; j < 7; j++)
-        {
-            args.append(threshold_strings[i]->at(j).toLatin1());
-        }
-    }
+    args.append(lower_threshold_string);
+    args.append(upper_threshold_string);
 
     addWriteRequestToQueue(request_queue,SP_X_ID,mneumonic,args);
 }
@@ -803,9 +792,6 @@ bool PfeifferSerialclass::checkState()
     if (serial_port == nullptr)
     {
         emit errorString("Pfeiffer: CONNECTION ERROR", false);
-        disconnectDevice();
-        event_timer.stop();
-        reconnect_timer.start();
         return false;
     }
 
@@ -857,6 +843,7 @@ void PfeifferSerialclass::connectDevice()
     if (serial_port == nullptr)
     {
         serial_port = new QSerialPort(this);
+        serial_port->moveToThread(this->thread());
     }
     else if (serial_port->isOpen())
     {
@@ -875,9 +862,10 @@ void PfeifferSerialclass::connectDevice()
     {
         emit errorString("Pfeiffer: CONNECTED", true);
         emit deviceConnected(serial_port->error());
-        event_timer.start();
-        reconnect_timer.stop();
         serial_port->flush();
+
+        emit startEventLoopTimer();
+        emit stopReconnectTimer();
     }
     else
     {
@@ -886,8 +874,9 @@ void PfeifferSerialclass::connectDevice()
         serial_port = nullptr;
         emit errorString("Pfeiffer: CONNECTION ERROR", false);
         emit deviceConnected(QSerialPort::NotOpenError);
-        event_timer.stop();
-        reconnect_timer.start();
+
+        emit stopEventLoopTimer();
+        emit startReconnectTimer();
     }
 }
 
@@ -898,8 +887,8 @@ void PfeifferSerialclass::disconnectDevice()
         return;
     }
 
-    event_timer.stop();
-    reconnect_timer.stop();
+    emit stopReconnectTimer();
+    emit stopEventLoopTimer();
 
     serial_port->close();
     serial_port->deleteLater();
@@ -935,12 +924,6 @@ void PfeifferSerialclass::manageReply()
     {
         if ((buffer.at(i) == '\n') && (buffer.at(i-1) == '\r'))
         {
-            overflow_buffer.clear();
-            for (int j = i+1; j < buffer.length(); j++)
-            {
-                overflow_buffer.append(buffer.at(j));
-            }
-
             buffer.remove(i+1,buffer.length()-i);
         }
     }
@@ -1165,7 +1148,7 @@ bool PfeifferSerialclass::manageSensorControlReply()
                 request_queue.first());
 
     Sensor sensor;
-    char mnenumonic_idd = request->mneumonic.last();
+    char mnenumonic_idd = request->mneumonic.at(2).toLatin1();
 
     switch (mnenumonic_idd) {
     case 'A':
@@ -1299,7 +1282,7 @@ bool PfeifferSerialclass::manageStatusAndPressureReply()
     }
 
     Sensor sensor;
-    char mnenumonic_idd = request->mneumonic.last();
+    char mnenumonic_idd = request->mneumonic.at(2).toLatin1();
 
     switch (mnenumonic_idd) {
     case '1':
@@ -1538,7 +1521,7 @@ bool PfeifferSerialclass::manageThresholdValueSettingReply()
                 request_queue.first());
 
     Relay relay;
-    char mnenumonic_idd = request->mneumonic.last();
+    char mnenumonic_idd = request->mneumonic.at(2).toLatin1();
     switch (mnenumonic_idd) {
     case 'A':
         relay = Relay1;

@@ -69,6 +69,7 @@ signals:
     void changeStopBits(const SerialSettingsWindow::Device device, const QSerialPort::StopBits stop_bits);
     void changeDataBits(const SerialSettingsWindow::Device device, const QSerialPort::DataBits data_bits);
     void changeParity(const SerialSettingsWindow::Device device, const QSerialPort::Parity parity);
+    void resetDevice(const SerialSettingsWindow::Device device);
 };
 
 #endif // SERIALSETTINGSWINDOW_H
