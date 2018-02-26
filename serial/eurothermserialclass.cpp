@@ -704,7 +704,7 @@ void EurothermSerialClass::requestWriteTargetSetpoint(
         const int server_address, const float setpoint)
 {
     addFloatRequestToQueue(request_queue,server_address,TG_SP,
-                           HoldingRegister,ReadRequest,setpoint);
+                           HoldingRegister,WriteRequest,setpoint);
 }
 
 void EurothermSerialClass::requestWriteProportionalBand(
@@ -1114,6 +1114,7 @@ void EurothermSerialClass::manageReply()
         emit safeOutputValueforSensorBreak(server_address, value_float32);
         break;
     case SP_RAT:
+        emit setpointRateLimitValue(server_address, value_float32);
         break;
     case P_ERR:
         break;

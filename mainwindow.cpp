@@ -94,8 +94,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(setPfeifferPortBaudRate(QSerialPort::BaudRate)),pfeiffer_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
     connect(this,SIGNAL(setPfeifferPortParity(QSerialPort::Parity)),pfeiffer_serial,SLOT(setParity(QSerialPort::Parity)));
 
-    connect(this,SIGNAL(readReadPVInputValue(int)),eurotherm_serial,SLOT(requestReadPVInputValue(int)));
-    connect(this,SIGNAL(readReadTargetSetpoint(int)),eurotherm_serial,SLOT(requestReadTargetSetpoint(int)));
+    connect(this,SIGNAL(readPVInputValue(int)),eurotherm_serial,SLOT(requestReadPVInputValue(int)));
+    connect(this,SIGNAL(readTargetSetpoint(int)),eurotherm_serial,SLOT(requestReadTargetSetpoint(int)));
+    connect(this,SIGNAL(readSetpointRateLimitValue(int)),eurotherm_serial,SLOT(requestReadSetpointRateLimitValue(int)));
 
     connect(this,SIGNAL(readPressureAndStatus(PfeifferSerialclass::Sensor)),pfeiffer_serial,SLOT(requestReadStatusAndPressure(PfeifferSerialclass::Sensor)));
 
@@ -269,8 +270,9 @@ void MainWindow::eventLoop()
 {
     for (int i = 0; i < 3; i++)
     {
-        emit readReadPVInputValue(i+1);
-        emit readReadTargetSetpoint(i+1);
+        emit readPVInputValue(i+1);
+        emit readTargetSetpoint(i+1);
+        emit readSetpointRateLimitValue(i+1);
     }
 
     emit readPressureAndStatus(PfeifferSerialclass::Sensor6);

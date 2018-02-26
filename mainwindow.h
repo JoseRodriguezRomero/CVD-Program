@@ -70,8 +70,9 @@ private slots:
 
 signals:
     void readPressureAndStatus(const PfeifferSerialclass::Sensor sensor);
-    void readReadPVInputValue(const int server_address);
-    void readReadTargetSetpoint(const int server_address);
+    void readPVInputValue(const int server_address);
+    void readTargetSetpoint(const int server_address);
+    void readSetpointRateLimitValue(const int server_address);
 
     void setEurothermPortName(const QString &name);
     void setEurothermPortParity(const QSerialPort::Parity parity);

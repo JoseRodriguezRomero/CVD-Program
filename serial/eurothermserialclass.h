@@ -23,7 +23,7 @@ public:
         DirectActing
     };
 
-    enum BaudRate {
+    /*enum BaudRate {
         Baud9600        = 0,
         Baud19200       = 1,
         Baud4800        = 2,
@@ -31,17 +31,17 @@ public:
         Baud1200        = 4
     };
 
+    enum Parity {
+        NoParity        = 0,
+        EvenParity      = 1,
+        OddParity       = 2
+    };*/
+
     enum Alarm {
         Alarm1,
         Alarm2,
         Alarm3,
         Alarm4
-    };
-
-    enum Parity {
-        NoParity        = 0,
-        EvenParity      = 1,
-        OddParity       = 2
     };
 
     enum Setpoint {

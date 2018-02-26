@@ -47,12 +47,16 @@ public:
 signals:
     void writeEurothermTemperatureSetpoint(const int server_address,
                                            const float setpoint);
+    void writeEurothermTemperatureRamp(const int server_address,
+                                       const float ramp);
 
 public slots:
     void setMeasuredTemperature(const int server_address,
                                 const float temperature);
     void setTemperatureSetpoint(const int server_address,
                                 const float setpoint);
+    void setTemperatureRamp(const int server_address,
+                            const float ramp);
 
     void setPfeifferPressure(
             PfeifferSerialclass::Sensor sensor,
@@ -62,7 +66,8 @@ public slots:
     void setBlockedCommands(bool block);
     void setUnBlockedCommands(bool unblock);
 
-    void requestSetTemperatureSetpoints();
+    void requestSetTemperatureSetpoint();
+    void requestSetTemperatureRamp();
 };
 
 #endif // MANUALCONTROLPAGE_H

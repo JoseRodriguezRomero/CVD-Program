@@ -198,12 +198,19 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
     eurotherm_serial = nullptr;
     pfeiffer_serial = nullptr;
 
-    connect(&temp_setpoint_left,SIGNAL(editingFinished()),this,
-            SLOT(requestSetTemperatureSetpoints()));
-    connect(&temp_setpoint_center,SIGNAL(editingFinished()),this,
-            SLOT(requestSetTemperatureSetpoints()));
-    connect(&temp_setpoint_right,SIGNAL(editingFinished()),this,
-            SLOT(requestSetTemperatureSetpoints()));
+    connect(&temp_setpoint_left,SIGNAL(editingFinished()),
+            this,SLOT(requestSetTemperatureSetpoint()));
+    connect(&temp_setpoint_center,SIGNAL(editingFinished()),
+            this,SLOT(requestSetTemperatureSetpoint()));
+    connect(&temp_setpoint_right,SIGNAL(editingFinished()),
+            this,SLOT(requestSetTemperatureSetpoint()));
+
+    connect(&temp_ramp_left,SIGNAL(editingFinished()),
+            this,SLOT(requestSetTemperatureRamp()));
+    connect(&temp_ramp_center,SIGNAL(editingFinished()),
+            this,SLOT(requestSetTemperatureRamp()));
+    connect(&temp_ramp_right,SIGNAL(editingFinished()),
+            this,SLOT(requestSetTemperatureRamp()));
 }
 
 void ManualControlPage::setEurothermSerialClasss(
@@ -215,6 +222,13 @@ void ManualControlPage::setEurothermSerialClasss(
                    this,SLOT(setMeasuredTemperature(int,float)));
         disconnect(eurotherm_serial,SIGNAL(TargetSetpoint(int,float)),
                    this,SLOT(setTemperatureSetpoint(int,float)));
+        disconnect(eurotherm_serial,SIGNAL(setpointRateLimitValue(int,float)),
+                   this,SLOT(setTemperatureRamp(int,float)));
+
+        disconnect(this,SIGNAL(writeEurothermTemperatureSetpoint(int,float)),
+                   eurotherm_serial,SLOT(requestWriteTargetSetpoint(int,float)));
+        disconnect(this,SIGNAL(writeEurothermTemperatureRamp(int,float)),
+                   eurotherm_serial,SLOT(requestWriteSetpointRateLimitValue(int,float)));
     }
 
     this->eurotherm_serial = eurotherm_serial;
@@ -223,9 +237,13 @@ void ManualControlPage::setEurothermSerialClasss(
             this,SLOT(setMeasuredTemperature(int,float)));
     connect(eurotherm_serial,SIGNAL(targetSetpoint(int,float)),
             this,SLOT(setTemperatureSetpoint(int,float)));
+    connect(eurotherm_serial,SIGNAL(setpointRateLimitValue(int,float)),
+            this,SLOT(setTemperatureRamp(int,float)));
 
     connect(this,SIGNAL(writeEurothermTemperatureSetpoint(int,float)),
             eurotherm_serial,SLOT(requestWriteTargetSetpoint(int,float)));
+    connect(this,SIGNAL(writeEurothermTemperatureRamp(int,float)),
+            eurotherm_serial,SLOT(requestWriteSetpointRateLimitValue(int,float)));
 }
 
 void ManualControlPage::setPfeifferSerialClass(
@@ -290,8 +308,37 @@ void ManualControlPage::setTemperatureSetpoint(const int server_address,
     temp_setpoint->setValue(setpoint);
 }
 
-void ManualControlPage::setPfeifferPressure(PfeifferSerialclass::Sensor sensor,
-        PfeifferSerialclass::PressureMeasurementStatus status, const float pressure)
+void ManualControlPage::setTemperatureRamp(const int server_address,
+                                           const float ramp)
+{
+    QDoubleSpinBox *temp_ramp;
+
+    switch (server_address) {
+    case 1:
+        temp_ramp = &temp_ramp_left;
+        break;
+    case 2:
+        temp_ramp = &temp_ramp_center;
+        break;
+    case 3:
+        temp_ramp = &temp_ramp_right;
+        break;
+    default:
+        return;
+    }
+
+    if (temp_ramp->hasFocus())
+    {
+        return;
+    }
+
+    temp_ramp->setValue(ramp);
+}
+
+void ManualControlPage::setPfeifferPressure(
+        PfeifferSerialclass::Sensor sensor,
+        PfeifferSerialclass::PressureMeasurementStatus status,
+        const float pressure)
 {
     gauge_pressure.setText(QString::number(pressure,'E'));
 }
@@ -315,7 +362,7 @@ void ManualControlPage::setUnBlockedCommands(bool unblock)
     setBlockedCommands(!unblock);
 }
 
-void ManualControlPage::requestSetTemperatureSetpoints()
+void ManualControlPage::requestSetTemperatureSetpoint()
 { 
     QDoubleSpinBox *sender_widget = static_cast<QDoubleSpinBox*>(sender());
 
@@ -342,5 +389,35 @@ void ManualControlPage::requestSetTemperatureSetpoints()
     else if (send_address == r_address)
     {
         emit writeEurothermTemperatureSetpoint(3,temp_setpoint_right.value());
+    }
+}
+
+void ManualControlPage::requestSetTemperatureRamp()
+{
+    QDoubleSpinBox *sender_widget = static_cast<QDoubleSpinBox*>(sender());
+
+    if (!sender_widget->hasFocus())
+    {
+        return;
+    }
+
+    sender_widget->clearFocus();
+
+    intptr_t send_address = reinterpret_cast<intptr_t>(sender_widget);
+    intptr_t l_address = reinterpret_cast<intptr_t>(&temp_ramp_left);
+    intptr_t c_address = reinterpret_cast<intptr_t>(&temp_ramp_center);
+    intptr_t r_address = reinterpret_cast<intptr_t>(&temp_ramp_right);
+
+    if (send_address == l_address)
+    {
+        emit writeEurothermTemperatureRamp(1,temp_ramp_left.value());
+    }
+    else if (send_address == c_address)
+    {
+        emit writeEurothermTemperatureRamp(2,temp_ramp_center.value());
+    }
+    else if (send_address == r_address)
+    {
+        emit writeEurothermTemperatureRamp(3,temp_ramp_right.value());
     }
 }
