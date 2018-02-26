@@ -1,5 +1,7 @@
 #define MAX_FAILED_ATTEMPTS         3
 
+#include <QDebug>
+
 #include "baseserialclass.h"
 
 void BaseSerialClass::setEventTimeInterval(
@@ -122,9 +124,6 @@ void BaseSerialClass::startEventLoop()
 
 void BaseSerialClass::eventLoop()
 {
-    QMutex mutex;
-    mutex.lock();
-
     if (!deviceConnected())
     {
         emit stopEventLoopTimer();
@@ -136,13 +135,11 @@ void BaseSerialClass::eventLoop()
         disconnectDevice();
         emit startReconnectTimer();
         emit stopEventLoopTimer();
-        mutex.unlock();
         return;
     }
 
     if (request_queue.length() < 1)
     {
-        mutex.unlock();
         return;
     }
 
@@ -163,6 +160,4 @@ void BaseSerialClass::eventLoop()
         emit startReconnectTimer();
         emit stopEventLoopTimer();
     }
-
-    mutex.unlock();
 }

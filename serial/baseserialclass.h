@@ -6,7 +6,6 @@
 #include <QString>
 #include <QObject>
 #include <QTimer>
-#include <QMutex>
 
 class BaseSerialClass : public QObject
 {

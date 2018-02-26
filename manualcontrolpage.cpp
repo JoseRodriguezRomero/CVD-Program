@@ -223,6 +223,9 @@ void ManualControlPage::setEurothermSerialClasss(
             this,SLOT(setMeasuredTemperature(int,float)));
     connect(eurotherm_serial,SIGNAL(targetSetpoint(int,float)),
             this,SLOT(setTemperatureSetpoint(int,float)));
+
+    connect(this,SIGNAL(writeEurothermTemperatureSetpoint(int,float)),
+            eurotherm_serial,SLOT(requestWriteTargetSetpoint(int,float)));
 }
 
 void ManualControlPage::setPfeifferSerialClass(
@@ -330,15 +333,14 @@ void ManualControlPage::requestSetTemperatureSetpoints()
 
     if (send_address == l_address)
     {
-        eurotherm_serial->requestWriteSetpoint(1,1,temp_setpoint_left.value());
+        emit writeEurothermTemperatureSetpoint(1,temp_setpoint_left.value());
     }
     else if (send_address == c_address)
     {
-        eurotherm_serial->requestWriteSetpoint(2,1,
-                                               temp_setpoint_center.value());
+        emit writeEurothermTemperatureSetpoint(2,temp_setpoint_center.value());
     }
     else if (send_address == r_address)
     {
-        eurotherm_serial->requestWriteSetpoint(3,1,temp_setpoint_right.value());
+        emit writeEurothermTemperatureSetpoint(3,temp_setpoint_right.value());
     }
 }

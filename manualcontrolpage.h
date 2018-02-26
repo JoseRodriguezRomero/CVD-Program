@@ -45,8 +45,8 @@ public:
     void setPfeifferSerialClass(PfeifferSerialclass *pfeiffer_serial);
 
 signals:
-    void newTemperatureSetpointSet(const int server_address,
-                                   const double setpoint);
+    void writeEurothermTemperatureSetpoint(const int server_address,
+                                           const float setpoint);
 
 public slots:
     void setMeasuredTemperature(const int server_address,
@@ -54,9 +54,10 @@ public slots:
     void setTemperatureSetpoint(const int server_address,
                                 const float setpoint);
 
-    void setPfeifferPressure(PfeifferSerialclass::Sensor sensor,
-                             PfeifferSerialclass::PressureMeasurementStatus status,
-                             const float pressure);
+    void setPfeifferPressure(
+            PfeifferSerialclass::Sensor sensor,
+            PfeifferSerialclass::PressureMeasurementStatus status,
+            const float pressure);
 
     void setBlockedCommands(bool block);
     void setUnBlockedCommands(bool unblock);

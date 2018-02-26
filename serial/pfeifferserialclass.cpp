@@ -843,7 +843,6 @@ void PfeifferSerialclass::connectDevice()
     if (serial_port == nullptr)
     {
         serial_port = new QSerialPort(this);
-        serial_port->moveToThread(this->thread());
     }
     else if (serial_port->isOpen())
     {

@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 
+#include <QDebug>
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     eurotherm_status_string("Eurotherm",this),
@@ -84,14 +86,15 @@ MainWindow::MainWindow(QWidget *parent) :
     manual_control_page.setEurothermSerialClasss(eurotherm_serial);
     manual_control_page.setPfeifferSerialClass(pfeiffer_serial);
 
+    recipes_page.setEurothermSerialClass(eurotherm_serial);
+
+    logs_page.setEurothermSerialClass(eurotherm_serial);
+
     eurotherm_serial->startEventLoop();
     pfeiffer_serial->startEventLoop();
 
     eurotherm_serial->moveToThread(&serial_thread);
     pfeiffer_serial->moveToThread(&serial_thread);
-
-    recipes_page.setEurothermSerialClass(eurotherm_serial);
-    logs_page.setEurothermSerialClass(eurotherm_serial);
 
     global_timer.setInterval(1000);
     global_timer.setSingleShot(false);
