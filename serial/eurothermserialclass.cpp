@@ -292,21 +292,20 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
 {
     this->setParent(parent);
 
-    port_name = "COM1";
+    port_name = "COM8";
     baud_rate = QSerialPort::Baud19200;
     port_parity = QSerialPort::NoParity;
     stop_bits = QSerialPort::OneStop;
     data_bits = QSerialPort::Data8;
 
     reconnect_timer.setInterval(1000);
-    event_timer.setInterval(80);        // large intervals for the event timer
+    event_timer.setInterval(10);        // large intervals for the event timer
                                         // lead to floaded request queues and
                                         // too fast intervals lead to mostly
                                         // corrupt messages in the serial port
 
     modbus_client = nullptr;  // never forgetti mom's spaghetti
     reply = nullptr;
-
 }
 
 EurothermSerialClass::~EurothermSerialClass()
@@ -343,8 +342,8 @@ void EurothermSerialClass::connectDevice()
     if (modbus_client == nullptr)
     {
         modbus_client = new QModbusRtuSerialMaster(this);
-        modbus_client->setTimeout(200);
-        modbus_client->setNumberOfRetries(3);
+        modbus_client->setTimeout(100);
+        modbus_client->setNumberOfRetries(2);
     }
     else if (modbus_client->state() == QModbusDevice::ConnectedState ||
              modbus_client->state() == QModbusDevice::ConnectingState)
@@ -364,7 +363,6 @@ void EurothermSerialClass::connectDevice()
                 QModbusDevice::SerialDataBitsParameter,data_bits);
 
     modbus_client->connectDevice();
-
     while (modbus_client->state() == QModbusDevice::ConnectingState)
     {
     }
@@ -376,6 +374,8 @@ void EurothermSerialClass::connectDevice()
     }
     else
     {
+        modbus_client->deleteLater();
+        modbus_client = nullptr;
         emit stopEventLoopTimer();
         emit startReconnectTimer();
     }
@@ -404,12 +404,6 @@ bool EurothermSerialClass::checkState()
     bool status = false;
 
     if (modbus_client == nullptr)
-    {
-        emit errorString("Eurotherm: CONNECTION ERROR",false);
-        return false;
-    }
-
-    if (modbus_client->state() != QModbusDevice::ConnectedState)
     {
         emit errorString("Eurotherm: CONNECTION ERROR",false);
         return false;
@@ -448,8 +442,19 @@ bool EurothermSerialClass::checkState()
         break;
     }
 
-    emit errorString("Eurotherm: " + reply_string,status);
+    if (!status)
+    {
+        emit errorString("Eurotherm: " + reply_string,status);
+        return false;
+    }
 
+    if (modbus_client->state() != QModbusDevice::ConnectedState)
+    {
+        emit errorString("Eurotherm: CONNECTION ERROR",false);
+        return false;
+    }
+
+    emit errorString("Eurotherm: " + reply_string,true);
     return status;
 }
 

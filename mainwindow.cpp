@@ -42,8 +42,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     serial_settings_window.hide();
 
-    serial_thread.start();
-
     eurotherm_serial = new EurothermSerialClass(nullptr);
     pfeiffer_serial = new PfeifferSerialclass(nullptr);
 
@@ -78,6 +76,24 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&serial_settings_window,SIGNAL(resetDevice(SerialSettingsWindow::Device)),
             this,SLOT(resetConnection(SerialSettingsWindow::Device)));
 
+    connect(this,SIGNAL(startEurothermEventLoop()),eurotherm_serial,SLOT(startEventLoop()));
+    connect(this,SIGNAL(connectEurothermSerialPort()),eurotherm_serial,SLOT(connectDevice()));
+    connect(this,SIGNAL(disconnectEurothermSerialPort()),eurotherm_serial,SLOT(disconnectDevice()));
+    connect(this,SIGNAL(setEurothermPortName(QString)),eurotherm_serial,SLOT(setSerialPortName(QString)));
+    connect(this,SIGNAL(setEurothermPortDataBits(QSerialPort::DataBits)),eurotherm_serial,SLOT(setDataBits(QSerialPort::DataBits)));
+    connect(this,SIGNAL(setEurothermPortStopBits(QSerialPort::StopBits)),eurotherm_serial,SLOT(setStopBits(QSerialPort::StopBits)));
+    connect(this,SIGNAL(setEurothermPortBaudRate(QSerialPort::BaudRate)),eurotherm_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
+    connect(this,SIGNAL(setEurothermPortParity(QSerialPort::Parity)),eurotherm_serial,SLOT(setParity(QSerialPort::Parity)));
+
+    connect(this,SIGNAL(startPfeifferEventLoop()),pfeiffer_serial,SLOT(startEventLoop()));
+    connect(this,SIGNAL(connectPfeifferSerialPort()),pfeiffer_serial,SLOT(connectDevice()));
+    connect(this,SIGNAL(disconnectPfeifferSerialPort()),pfeiffer_serial,SLOT(disconnectDevice()));
+    connect(this,SIGNAL(setPfeifferPortName(QString)),pfeiffer_serial,SLOT(setSerialPortName(QString)));
+    connect(this,SIGNAL(setPfeifferPortDataBits(QSerialPort::DataBits)),pfeiffer_serial,SLOT(setDataBits(QSerialPort::DataBits)));
+    connect(this,SIGNAL(setPfeifferPortStopBits(QSerialPort::StopBits)),pfeiffer_serial,SLOT(setStopBits(QSerialPort::StopBits)));
+    connect(this,SIGNAL(setPfeifferPortBaudRate(QSerialPort::BaudRate)),pfeiffer_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
+    connect(this,SIGNAL(setPfeifferPortParity(QSerialPort::Parity)),pfeiffer_serial,SLOT(setParity(QSerialPort::Parity)));
+
     connect(this,SIGNAL(readReadPVInputValue(int)),eurotherm_serial,SLOT(requestReadPVInputValue(int)));
     connect(this,SIGNAL(readReadTargetSetpoint(int)),eurotherm_serial,SLOT(requestReadTargetSetpoint(int)));
 
@@ -87,18 +103,15 @@ MainWindow::MainWindow(QWidget *parent) :
     manual_control_page.setPfeifferSerialClass(pfeiffer_serial);
 
     recipes_page.setEurothermSerialClass(eurotherm_serial);
-
     logs_page.setEurothermSerialClass(eurotherm_serial);
-
-    eurotherm_serial->startEventLoop();
-    pfeiffer_serial->startEventLoop();
 
     eurotherm_serial->moveToThread(&serial_thread);
     pfeiffer_serial->moveToThread(&serial_thread);
 
+    serial_thread.start();
+
     global_timer.setInterval(1000);
     global_timer.setSingleShot(false);
-    global_timer.start();
 }
 
 MainWindow::~MainWindow()
@@ -112,136 +125,114 @@ MainWindow::~MainWindow()
     pfeiffer_serial->deleteLater();
 }
 
+void MainWindow::initializeSerialDevices()
+{
+    emit startEurothermEventLoop();
+    emit startPfeifferEventLoop();
+    global_timer.start();
+}
+
 void MainWindow::setPortName(const SerialSettingsWindow::Device device,
                              const QString &port_name)
 {
-    BaseSerialClass *serial_class;
-
     switch (device) {
     case SerialSettingsWindow::Eurotherm:
-        serial_class = eurotherm_serial;
+        emit setEurothermPortName(port_name);
         break;
     case SerialSettingsWindow::Pfeiffer:
-        serial_class = pfeiffer_serial;
+        emit setPfeifferPortName(port_name);
         break;
     case SerialSettingsWindow::MKS:
-        return;
         break;
     default:
         return;
     }
-
-    serial_class->setSerialPortName(port_name);
 }
 
 void MainWindow::setBaudRate(const SerialSettingsWindow::Device device,
                              const QSerialPort::BaudRate baud_rate)
 {
-    BaseSerialClass *serial_class;
-
     switch (device) {
     case SerialSettingsWindow::Eurotherm:
-        serial_class = eurotherm_serial;
+        emit setEurothermPortBaudRate(baud_rate);
         break;
     case SerialSettingsWindow::Pfeiffer:
-        serial_class = pfeiffer_serial;
+        emit setPfeifferPortBaudRate(baud_rate);
         break;
     case SerialSettingsWindow::MKS:
-        return;
         break;
     default:
         return;
     }
-
-    serial_class->setBaudRate(baud_rate);
 }
 
 void MainWindow::setStopBits(const SerialSettingsWindow::Device device,
                              const QSerialPort::StopBits stop_bits)
 {
-    BaseSerialClass *serial_class;
-
     switch (device) {
     case SerialSettingsWindow::Eurotherm:
-        serial_class = eurotherm_serial;
+        emit setEurothermPortStopBits(stop_bits);
         break;
     case SerialSettingsWindow::Pfeiffer:
-        serial_class = pfeiffer_serial;
+        emit setPfeifferPortStopBits(stop_bits);
         break;
     case SerialSettingsWindow::MKS:
-        return;
         break;
     default:
         return;
     }
-
-    serial_class->setStopBits(stop_bits);
 }
 
 void MainWindow::setDataBits(const SerialSettingsWindow::Device device,
                              const QSerialPort::DataBits data_bits)
 {
-    BaseSerialClass *serial_class;
-
     switch (device) {
     case SerialSettingsWindow::Eurotherm:
-        serial_class = eurotherm_serial;
+        emit setEurothermPortDataBits(data_bits);
         break;
     case SerialSettingsWindow::Pfeiffer:
-        serial_class = pfeiffer_serial;
+        emit setPfeifferPortDataBits(data_bits);
         break;
     case SerialSettingsWindow::MKS:
-        return;
         break;
     default:
         return;
     }
-
-    serial_class->setDataBits(data_bits);
 }
 
 void MainWindow::setParity(const SerialSettingsWindow::Device device,
                            const QSerialPort::Parity parity)
 {
-    BaseSerialClass *serial_class;
-
     switch (device) {
     case SerialSettingsWindow::Eurotherm:
-        serial_class = eurotherm_serial;
+        emit setEurothermPortParity(parity);
         break;
     case SerialSettingsWindow::Pfeiffer:
-        serial_class = pfeiffer_serial;
+        emit setPfeifferPortParity(parity);
         break;
     case SerialSettingsWindow::MKS:
-        return;
         break;
     default:
         return;
     }
-
-    serial_class->setParity(parity);
 }
 
 void MainWindow::resetConnection(const SerialSettingsWindow::Device device)
 {
-    BaseSerialClass *serial_class;
-
     switch (device) {
     case SerialSettingsWindow::Eurotherm:
-        serial_class = eurotherm_serial;
+        emit disconnectEurothermSerialPort();
+        emit connectEurothermSerialPort();
         break;
     case SerialSettingsWindow::Pfeiffer:
-        serial_class = pfeiffer_serial;
+        emit disconnectPfeifferSerialPort();
+        emit connectPfeifferSerialPort();
         break;
     case SerialSettingsWindow::MKS:
-        return;
         break;
     default:
         return;
     }
-
-    serial_class->disconnectDevice();
-    serial_class->startEventLoop();
 }
 
 void MainWindow::openSerialSettingsWindow()

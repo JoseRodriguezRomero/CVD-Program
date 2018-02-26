@@ -231,7 +231,7 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
     event_timer.setInterval(10);
     event_timer.setSingleShot(false);
 
-    port_name = "COM8";
+    port_name = "COM7";
     baud_rate = QSerialPort::Baud9600;
     stop_bits = PFEIFFER_STOP_BITS;
     data_bits = PFEIFFER_DATA_BITS;

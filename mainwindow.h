@@ -45,6 +45,8 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+    void initializeSerialDevices();
+
 public slots:
     void setPortName(const SerialSettingsWindow::Device device,
                      const QString &port_name);
@@ -70,6 +72,26 @@ signals:
     void readPressureAndStatus(const PfeifferSerialclass::Sensor sensor);
     void readReadPVInputValue(const int server_address);
     void readReadTargetSetpoint(const int server_address);
+
+    void setEurothermPortName(const QString &name);
+    void setEurothermPortParity(const QSerialPort::Parity parity);
+    void setEurothermPortBaudRate(const QSerialPort::BaudRate baud_rate);
+    void setEurothermPortStopBits(const QSerialPort::StopBits stop_bits);
+    void setEurothermPortDataBits(const QSerialPort::DataBits data_bits);
+    void startEurothermEventLoop();
+
+    void setPfeifferPortName(const QString &name);
+    void setPfeifferPortParity(const QSerialPort::Parity parity);
+    void setPfeifferPortBaudRate(const QSerialPort::BaudRate baud_rate);
+    void setPfeifferPortStopBits(const QSerialPort::StopBits stop_bits);
+    void setPfeifferPortDataBits(const QSerialPort::DataBits data_bits);
+    void startPfeifferEventLoop();
+
+    void disconnectEurothermSerialPort();
+    void connectEurothermSerialPort();
+
+    void disconnectPfeifferSerialPort();
+    void connectPfeifferSerialPort();
 };
 
 #endif // MAINWINDOW_H
