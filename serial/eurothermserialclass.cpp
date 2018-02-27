@@ -298,6 +298,9 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     stop_bits = QSerialPort::OneStop;
     data_bits = QSerialPort::Data8;
 
+    reconnect_timer.setParent(this);
+    event_timer.setParent(this);
+
     reconnect_timer.setInterval(1000);
     event_timer.setInterval(10);        // large intervals for the event timer
                                         // lead to floaded request queues and

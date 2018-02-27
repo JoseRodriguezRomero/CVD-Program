@@ -90,9 +90,11 @@ signals:
 
     void disconnectEurothermSerialPort();
     void connectEurothermSerialPort();
+    void deleteEurothermSerialClass();
 
     void disconnectPfeifferSerialPort();
     void connectPfeifferSerialPort();
+    void deletePfeifferSerialClass();
 };
 
 #endif // MAINWINDOW_H

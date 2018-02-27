@@ -77,6 +77,7 @@ MainWindow::MainWindow(QWidget *parent) :
             this,SLOT(resetConnection(SerialSettingsWindow::Device)));
 
     connect(this,SIGNAL(startEurothermEventLoop()),eurotherm_serial,SLOT(startEventLoop()));
+    connect(this,SIGNAL(deleteEurothermSerialClass()),eurotherm_serial,SLOT(deleteLater()));
     connect(this,SIGNAL(connectEurothermSerialPort()),eurotherm_serial,SLOT(connectDevice()));
     connect(this,SIGNAL(disconnectEurothermSerialPort()),eurotherm_serial,SLOT(disconnectDevice()));
     connect(this,SIGNAL(setEurothermPortName(QString)),eurotherm_serial,SLOT(setSerialPortName(QString)));
@@ -86,6 +87,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(setEurothermPortParity(QSerialPort::Parity)),eurotherm_serial,SLOT(setParity(QSerialPort::Parity)));
 
     connect(this,SIGNAL(startPfeifferEventLoop()),pfeiffer_serial,SLOT(startEventLoop()));
+    connect(this,SIGNAL(deletePfeifferSerialClass()),pfeiffer_serial,SLOT(deleteLater()));
     connect(this,SIGNAL(connectPfeifferSerialPort()),pfeiffer_serial,SLOT(connectDevice()));
     connect(this,SIGNAL(disconnectPfeifferSerialPort()),pfeiffer_serial,SLOT(disconnectDevice()));
     connect(this,SIGNAL(setPfeifferPortName(QString)),pfeiffer_serial,SLOT(setSerialPortName(QString)));
@@ -117,13 +119,22 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    emit disconnectEurothermSerialPort();
+    emit disconnectPfeifferSerialPort();
+
+    emit deleteEurothermSerialClass();
+    emit deletePfeifferSerialClass();
+
+    QTime delete_timer;
+    delete_timer.start();
+    while (delete_timer.elapsed() < 500)
+    {
+    }
+
     serial_thread.quit();
     while (serial_thread.isRunning())
     {
     }
-
-    eurotherm_serial->deleteLater();
-    pfeiffer_serial->deleteLater();
 }
 
 void MainWindow::initializeSerialDevices()
