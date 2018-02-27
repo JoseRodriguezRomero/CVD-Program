@@ -302,10 +302,7 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     event_timer.setParent(this);
 
     reconnect_timer.setInterval(1000);
-    event_timer.setInterval(10);        // large intervals for the event timer
-                                        // lead to floaded request queues and
-                                        // too fast intervals lead to mostly
-                                        // corrupt messages in the serial port
+    event_timer.setInterval(5);
 
     modbus_client = nullptr;  // never forgetti mom's spaghetti
     reply = nullptr;

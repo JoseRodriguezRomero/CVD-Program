@@ -17,6 +17,7 @@
 
 #include "serial/eurothermserialclass.h"
 #include "serial/pfeifferserialclass.h"
+#include "serial/mksserialclass.h"
 
 #include "serialsettingswindow.h"
 
@@ -36,6 +37,7 @@ private:
     QThread serial_thread;
     EurothermSerialClass *eurotherm_serial;
     PfeifferSerialclass *pfeiffer_serial;
+    MKSSerialClass *mks_serial;
 
     SerialSettingsWindow serial_settings_window;
 
@@ -88,6 +90,13 @@ signals:
     void setPfeifferPortDataBits(const QSerialPort::DataBits data_bits);
     void startPfeifferEventLoop();
 
+    void setMKSPortName(const QString &name);
+    void setMKSPortParity(const QSerialPort::Parity parity);
+    void setMKSPortBaudRate(const QSerialPort::BaudRate baud_rate);
+    void setMKSPortStopBits(const QSerialPort::StopBits stop_bits);
+    void setMKSPortDataBits(const QSerialPort::DataBits data_bits);
+    void startMKSEventLoop();
+
     void disconnectEurothermSerialPort();
     void connectEurothermSerialPort();
     void deleteEurothermSerialClass();
@@ -95,6 +104,10 @@ signals:
     void disconnectPfeifferSerialPort();
     void connectPfeifferSerialPort();
     void deletePfeifferSerialClass();
+
+    void disconnectMKSSerialPort();
+    void connectMKSSerialPort();
+    void deleteMKSSerialClass();
 };
 
 #endif // MAINWINDOW_H

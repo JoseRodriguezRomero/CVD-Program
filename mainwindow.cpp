@@ -44,6 +44,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     eurotherm_serial = new EurothermSerialClass(nullptr);
     pfeiffer_serial = new PfeifferSerialclass(nullptr);
+    mks_serial = new MKSSerialClass(nullptr);
 
     connect(exit,SIGNAL(clicked(bool)),this,SLOT(close()));
     connect(serial_settings,SIGNAL(clicked(bool)),this,SLOT(openSerialSettingsWindow()));
@@ -62,6 +63,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(eurotherm_serial,SIGNAL(errorString(QString,bool)),&eurotherm_status_string,SLOT(setStatusLabel(QString,bool)));
     connect(pfeiffer_serial,SIGNAL(errorString(QString,bool)),&pfeiffer_status_string,SLOT(setStatusLabel(QString,bool)));
+    connect(mks_serial,SIGNAL(errorString(QString,bool)),&mks_status_string,SLOT(setStatusLabel(QString,bool)));
 
     connect(&serial_settings_window,SIGNAL(changePortName(SerialSettingsWindow::Device,QString)),
             this,SLOT(setPortName(SerialSettingsWindow::Device,QString)));
@@ -96,6 +98,16 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(setPfeifferPortBaudRate(QSerialPort::BaudRate)),pfeiffer_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
     connect(this,SIGNAL(setPfeifferPortParity(QSerialPort::Parity)),pfeiffer_serial,SLOT(setParity(QSerialPort::Parity)));
 
+    connect(this,SIGNAL(startMKSEventLoop()),mks_serial,SLOT(startEventLoop()));
+    connect(this,SIGNAL(deleteMKSSerialClass()),mks_serial,SLOT(deleteLater()));
+    connect(this,SIGNAL(connectMKSSerialPort()),mks_serial,SLOT(connectDevice()));
+    connect(this,SIGNAL(disconnectMKSSerialPort()),mks_serial,SLOT(disconnectDevice()));
+    connect(this,SIGNAL(setMKSPortName(QString)),mks_serial,SLOT(setSerialPortName(QString)));
+    connect(this,SIGNAL(setMKSPortDataBits(QSerialPort::DataBits)),mks_serial,SLOT(setDataBits(QSerialPort::DataBits)));
+    connect(this,SIGNAL(setMKSPortStopBits(QSerialPort::StopBits)),mks_serial,SLOT(setStopBits(QSerialPort::StopBits)));
+    connect(this,SIGNAL(setMKSPortBaudRate(QSerialPort::BaudRate)),mks_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
+    connect(this,SIGNAL(setMKSPortParity(QSerialPort::Parity)),mks_serial,SLOT(setParity(QSerialPort::Parity)));
+
     connect(this,SIGNAL(readPVInputValue(int)),eurotherm_serial,SLOT(requestReadPVInputValue(int)));
     connect(this,SIGNAL(readTargetSetpoint(int)),eurotherm_serial,SLOT(requestReadTargetSetpoint(int)));
     connect(this,SIGNAL(readSetpointRateLimitValue(int)),eurotherm_serial,SLOT(requestReadSetpointRateLimitValue(int)));
@@ -110,6 +122,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     eurotherm_serial->moveToThread(&serial_thread);
     pfeiffer_serial->moveToThread(&serial_thread);
+    mks_serial->moveToThread(&serial_thread);
 
     serial_thread.start();
 
@@ -141,6 +154,7 @@ void MainWindow::initializeSerialDevices()
 {
     emit startEurothermEventLoop();
     emit startPfeifferEventLoop();
+    emit startMKSEventLoop();
     global_timer.start();
 }
 
@@ -155,6 +169,7 @@ void MainWindow::setPortName(const SerialSettingsWindow::Device device,
         emit setPfeifferPortName(port_name);
         break;
     case SerialSettingsWindow::MKS:
+        emit setMKSPortName(port_name);
         break;
     default:
         return;
@@ -172,6 +187,7 @@ void MainWindow::setBaudRate(const SerialSettingsWindow::Device device,
         emit setPfeifferPortBaudRate(baud_rate);
         break;
     case SerialSettingsWindow::MKS:
+        emit setMKSPortBaudRate(baud_rate);
         break;
     default:
         return;
@@ -189,6 +205,7 @@ void MainWindow::setStopBits(const SerialSettingsWindow::Device device,
         emit setPfeifferPortStopBits(stop_bits);
         break;
     case SerialSettingsWindow::MKS:
+        emit setMKSPortStopBits(stop_bits);
         break;
     default:
         return;
@@ -206,6 +223,7 @@ void MainWindow::setDataBits(const SerialSettingsWindow::Device device,
         emit setPfeifferPortDataBits(data_bits);
         break;
     case SerialSettingsWindow::MKS:
+        emit setMKSPortDataBits(data_bits);
         break;
     default:
         return;
@@ -223,6 +241,7 @@ void MainWindow::setParity(const SerialSettingsWindow::Device device,
         emit setPfeifferPortParity(parity);
         break;
     case SerialSettingsWindow::MKS:
+        emit setMKSPortParity(parity);
         break;
     default:
         return;
@@ -241,6 +260,8 @@ void MainWindow::resetConnection(const SerialSettingsWindow::Device device)
         emit connectPfeifferSerialPort();
         break;
     case SerialSettingsWindow::MKS:
+        emit disconnectMKSSerialPort();
+        emit connectMKSSerialPort();
         break;
     default:
         return;

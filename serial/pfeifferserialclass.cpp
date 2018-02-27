@@ -2,12 +2,14 @@
 
 #include <QDebug>
 
-#define MAX_QUEUE_LEN           20
+#define MAX_QUEUE_LEN   20
 
-#define PFEIFFER_FLOW_CONTROL       QSerialPort::NoFlowControl
-#define PFEIFFER_STOP_BITS          QSerialPort::OneStop
-#define PFEIFFER_DATA_BITS          QSerialPort::Data8
-#define PFEIFFER_PARITY             QSerialPort::NoParity
+#define PFEIFFER_DEFAULT_PORT_NAME          "COM1"
+#define PFEIFFER_DEFAULT_PARITY             QSerialPort::NoParity
+#define PFEIFFER_DEFAULT_BAUD_RATE          QSerialPort::Baud9600
+#define PFEIFFER_DEFAULT_STOP_BITS          QSerialPort::OneStop
+#define PFEIFFER_DEFAULT_DATA_BITS          QSerialPort::Data8
+#define PFEIFFER_DEFAULT_FLOW_CONTROL       QSerialPort::NoFlowControl
 
 /* Mneumonics */
 
@@ -234,12 +236,12 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
     event_timer.setParent(this);
     reconnect_timer.setParent(this);
 
-    port_name = "COM7";
-    baud_rate = QSerialPort::Baud9600;
-    stop_bits = PFEIFFER_STOP_BITS;
-    data_bits = PFEIFFER_DATA_BITS;
-    port_parity = PFEIFFER_PARITY;
-    flow_control = PFEIFFER_FLOW_CONTROL;
+    port_name = PFEIFFER_DEFAULT_PORT_NAME;
+    baud_rate = PFEIFFER_DEFAULT_BAUD_RATE;
+    stop_bits = PFEIFFER_DEFAULT_STOP_BITS;
+    data_bits = PFEIFFER_DEFAULT_DATA_BITS;
+    port_parity = PFEIFFER_DEFAULT_PARITY;
+    flow_control = PFEIFFER_DEFAULT_FLOW_CONTROL;
 
     failed_attempts = 0;
 }
@@ -315,7 +317,6 @@ void PfeifferSerialclass::processRequestQueue()
 
     if (serial_port->isWritable())
     {
-        serial_port->flush();
         serial_port->write(msg);
 
         if (serial_port->waitForBytesWritten(500))
@@ -907,13 +908,13 @@ bool PfeifferSerialclass::processPending() const
 
 void PfeifferSerialclass::manageReply()
 {
-    PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
-                request_queue.first());
-
     if (serial_port->bytesAvailable() < 1)
     {
         return;
     }
+
+    PfeifferRequestStruct *request = static_cast<PfeifferRequestStruct*>(
+                request_queue.first());
 
     buffer.append(serial_port->readAll());
 

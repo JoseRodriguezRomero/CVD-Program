@@ -132,7 +132,7 @@ void BaseSerialClass::eventLoop()
         return;
     }
 
-    if (request_queue.length() < 1)
+    if (request_queue.isEmpty())
     {
         return;
     }
