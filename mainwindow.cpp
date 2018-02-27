@@ -125,6 +125,7 @@ MainWindow::MainWindow(QWidget *parent) :
     mks_serial->moveToThread(&serial_thread);
 
     serial_thread.start();
+    serial_thread.setPriority(QThread::HighestPriority);
 
     global_timer.setInterval(1000);
     global_timer.setSingleShot(false);

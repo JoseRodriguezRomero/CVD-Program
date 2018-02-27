@@ -309,7 +309,7 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     event_timer.setParent(this);
 
     reconnect_timer.setInterval(1000);
-    event_timer.setInterval(5);
+    event_timer.setInterval(10);
 
     modbus_client = nullptr;  // never forgetti mom's spaghetti
     reply = nullptr;
@@ -349,8 +349,8 @@ void EurothermSerialClass::connectDevice()
     if (modbus_client == nullptr)
     {
         modbus_client = new QModbusRtuSerialMaster(this);
-        modbus_client->setTimeout(100);
-        modbus_client->setNumberOfRetries(2);
+        modbus_client->setTimeout(200);
+        modbus_client->setNumberOfRetries(3);
     }
     else if (modbus_client->state() == QModbusDevice::ConnectedState ||
              modbus_client->state() == QModbusDevice::ConnectingState)
@@ -960,6 +960,7 @@ void EurothermSerialClass::manageReply()
     if (!data_unit.isValid())
     {
         reply->deleteLater();
+        reply = nullptr;
         request->pending = false;
         failed_attempts++;
         return;

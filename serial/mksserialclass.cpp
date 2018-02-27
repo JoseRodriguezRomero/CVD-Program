@@ -134,7 +134,6 @@ MKSSerialClass::MKSSerialClass(QObject *parent)
     flow_control = MKS_DEFAULT_FLOW_CONTROL;
 
     failed_attempts = 0;
-
     serial_port = nullptr;
 }
 
@@ -208,7 +207,6 @@ void MKSSerialClass::manageReply()
     }
     else
     {
-
     }
 }
 
