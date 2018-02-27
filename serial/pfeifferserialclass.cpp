@@ -126,10 +126,10 @@ struct PfeifferRequestStruct
 {
     int mneumonic_id;
     QString mneumonic;
+    QVector<QString> args;
     bool pending;
     bool enquiry;
     bool enquirying;
-    QVector<QString> args;
 };
 
 void addReadRequestToQueue(QVector<void*> &request_queue,

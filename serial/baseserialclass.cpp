@@ -4,14 +4,12 @@
 
 #include "baseserialclass.h"
 
-void BaseSerialClass::setEventTimeInterval(
-        const uint interval)
+void BaseSerialClass::setEventTimeInterval(const uint interval)
 {
     event_timer.setInterval(interval);
 }
 
-void BaseSerialClass::setReconnectTimeInterval(
-        const uint interval)
+void BaseSerialClass::setReconnectTimeInterval(const uint interval)
 {
     reconnect_timer.setInterval(interval);
 }
@@ -51,32 +49,28 @@ void BaseSerialClass::setSerialPortName(const QString &port_name)
     this->port_name = port_name;
 }
 
-void BaseSerialClass::setParity(const QSerialPort::Parity
-                                               port_parity)
+void BaseSerialClass::setParity(const QSerialPort::Parity port_parity)
 {
     this->port_parity = port_parity;
 }
 
-void BaseSerialClass::setBaudRate(const QSerialPort::BaudRate
-                                                 baud_rate)
+void BaseSerialClass::setBaudRate(const QSerialPort::BaudRate baud_rate)
 {
     this->baud_rate = baud_rate;
 }
 
-void BaseSerialClass::setStopBits(const QSerialPort::StopBits
-                                                 stop_bits)
+void BaseSerialClass::setStopBits(const QSerialPort::StopBits stop_bits)
 {
     this->stop_bits = stop_bits;
 }
 
-void BaseSerialClass::setDataBits(const QSerialPort::DataBits
-                                                 data_bits)
+void BaseSerialClass::setDataBits(const QSerialPort::DataBits data_bits)
 {
     this->data_bits = data_bits;
 }
 
-void BaseSerialClass::setFlowControl(const QSerialPort::FlowControl
-                                     flow_control)
+void BaseSerialClass::setFlowControl(
+        const QSerialPort::FlowControl flow_control)
 {
     this->flow_control = flow_control;
 }

@@ -185,6 +185,22 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
     gauge_pressure.setDisabled(true);
     pfeiffer_gbox_layout->addWidget(&gauge_pressure,0,1,1,1);
 
+    QLabel *pfeiffer_label2 = new QLabel(this);
+    pfeiffer_label2->setText("Gauge Sensor");
+    pfeiffer_label2->setAlignment(LABEL_ALIGMENT);
+    pfeiffer_gbox_layout->addWidget(pfeiffer_label2,1,0,1,1);
+
+    gauge_sensor.setDisabled(true);
+    pfeiffer_gbox_layout->addWidget(&gauge_sensor,1,1,1,1);
+
+    QLabel *pfeiffer_label3 = new QLabel(this);
+    pfeiffer_label3->setText("Sensor Status");
+    pfeiffer_label3->setAlignment(LABEL_ALIGMENT);
+    pfeiffer_gbox_layout->addWidget(pfeiffer_label3,2,0,1,1);
+
+    sensor_status.setDisabled(true);
+    pfeiffer_gbox_layout->addWidget(&sensor_status,2,1,1,1);
+
     central_layout->addItem(new QSpacerItem(0,0,QSizePolicy::Expanding,
                                             QSizePolicy::Expanding));
 
@@ -341,6 +357,55 @@ void ManualControlPage::setPfeifferPressure(
         const float pressure)
 {
     gauge_pressure.setText(QString::number(pressure,'E'));
+
+    switch (sensor) {
+    case PfeifferSerialclass::Sensor1:
+        gauge_sensor.setText("Sensor 1");
+        break;
+    case PfeifferSerialclass::Sensor2:
+        gauge_sensor.setText("Sensor 2");
+        break;
+    case PfeifferSerialclass::Sensor3:
+        gauge_sensor.setText("Sensor 3");
+        break;
+    case PfeifferSerialclass::Sensor4:
+        gauge_sensor.setText("Sensor 4");
+        break;
+    case PfeifferSerialclass::Sensor5:
+        gauge_sensor.setText("Sensor 5");
+        break;
+    case PfeifferSerialclass::Sensor6:
+        gauge_sensor.setText("Sensor 6");
+        break;
+    default:
+        break;
+    }
+
+    switch (status) {
+    case PfeifferSerialclass::MeasurementDataOkay:
+        sensor_status.setText("Sensor OK");
+        break;
+    case PfeifferSerialclass::Underrange:
+        sensor_status.setText("Underrange Error");
+        break;
+    case PfeifferSerialclass::Overrange:
+        sensor_status.setText("Overrange Error");
+        break;
+    case PfeifferSerialclass::SensorError:
+        sensor_status.setText("Unknown Error");
+        break;
+    case PfeifferSerialclass::SensorOff:
+        sensor_status.setText("Sensor Off");
+        break;
+    case PfeifferSerialclass::NoSensor:
+        sensor_status.setText("No Sensor");
+        break;
+    case PfeifferSerialclass::IdentificationError:
+        sensor_status.setText("Identification Error");
+        break;
+    default:
+        break;
+    }
 }
 
 void ManualControlPage::setBlockedCommands(bool block)

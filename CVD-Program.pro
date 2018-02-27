@@ -32,7 +32,8 @@ SOURCES += manualcontrolpage.cpp \
     serialsettingswindow.cpp \
     logspage.cpp \
     serial/pfeifferserialclass.cpp \
-    serial/baseserialclass.cpp
+    serial/baseserialclass.cpp \
+    serial/mksserialclass.cpp
 
 HEADERS  += manualcontrolpage.h \
     statusstring.h \
@@ -42,4 +43,5 @@ HEADERS  += manualcontrolpage.h \
     serialsettingswindow.h \
     logspage.h \
     serial/pfeifferserialclass.h \
-    serial/baseserialclass.h
+    serial/baseserialclass.h \
+    serial/mksserialclass.h

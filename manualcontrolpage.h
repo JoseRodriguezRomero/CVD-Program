@@ -35,6 +35,8 @@ private:
     QDoubleSpinBox mfc_setpoint;
 
     QLineEdit gauge_pressure;
+    QLineEdit gauge_sensor;
+    QLineEdit sensor_status;
 
     EurothermSerialClass *eurotherm_serial;
     PfeifferSerialclass *pfeiffer_serial;

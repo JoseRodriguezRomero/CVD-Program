@@ -85,7 +85,7 @@ public:
     };
 
 public:
-    PfeifferSerialclass(QObject *parent = 0);
+    PfeifferSerialclass(QObject *parent = nullptr);
     ~PfeifferSerialclass();
 
     bool deviceConnected() const;
