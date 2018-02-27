@@ -4,6 +4,13 @@
 
 #define MAX_QUEUE_LEN           20
 
+#define EUROTHERM_DEFAULT_PORT_NAME         "COM8"
+#define EUROTHERM_DEFAULT_PARITY            QSerialPort::NoParity
+#define EUROTHERM_DEFAULT_BAUD_RATE         QSerialPort::Baud19200
+#define EUROTHERM_DEFAULT_STOP_BITS         QSerialPort::OneStop
+#define EUROTHERM_DEFAULT_DATA_BITS         QSerialPort::Data8
+#define EUROTHERM_DEFAULT_FLOW_CONTROL      QSerialPort::NoFlowControl
+
 #define IEEE_REGION             0x8000
 
 /* Modbus Adressess for Eurotherm 32xx series */
@@ -292,11 +299,11 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
 {
     this->setParent(parent);
 
-    port_name = "COM8";
-    baud_rate = QSerialPort::Baud19200;
-    port_parity = QSerialPort::NoParity;
-    stop_bits = QSerialPort::OneStop;
-    data_bits = QSerialPort::Data8;
+    port_name = EUROTHERM_DEFAULT_PORT_NAME;
+    baud_rate = EUROTHERM_DEFAULT_BAUD_RATE;
+    port_parity = EUROTHERM_DEFAULT_PARITY;
+    stop_bits = EUROTHERM_DEFAULT_STOP_BITS;
+    data_bits = EUROTHERM_DEFAULT_DATA_BITS;
 
     reconnect_timer.setParent(this);
     event_timer.setParent(this);

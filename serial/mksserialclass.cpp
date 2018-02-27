@@ -11,6 +11,96 @@
 #define MKS_DEFAULT_DATA_BITS           QSerialPort::Data8
 #define MKS_DEFAULT_FLOW_CONTROL        QSerialPort::NoFlowControl
 
+/* Mneumonics */
+
+#define DT              "DT"
+#define KY              "KY"
+#define DG              "DG"
+#define ID              "ID"
+#define RT              "RT"
+#define AC              "AC"
+#define AV              "AV"
+#define SP              "SP"
+#define EX              "EX"
+#define ST              "ST"
+#define VL              "VL"
+#define RL              "RL"
+#define DP              "DP"
+#define DP4             "DP4"
+#define RG              "RG"
+#define GN              "GN"
+#define OF              "OF"
+#define RTD             "RTD"
+#define AZ              "AZ"
+#define IN              "IN"
+#define OT              "OT"
+#define EI              "EI"
+#define EO              "EO"
+#define SM              "SM"
+#define LN              "LN"
+#define LS              "LS"
+#define LM              "LM"
+#define DB              "DB"
+#define UP              "UL"
+#define LL              "LL"
+#define FR              "FR"
+#define FT              "FT"
+#define PY              "PY"
+#define BD              "BD"
+#define AD              "AD"
+#define IM              "IM"
+#define RS              "RS"
+#define RE              "RE"
+#define DF              "DF"
+
+/* Mneumonics */
+
+/* Mneumonic identifiers */
+
+#define DT_ID               1
+#define KY_ID               2
+#define DG_ID               3
+#define ID_ID               4
+#define RT_ID               5
+#define AC_ID               6
+#define AV_ID               7
+#define SP_ID               8
+#define EX_ID               9
+#define ST_ID               10
+#define VL_ID               11
+#define RL_ID               12
+#define DP_ID               13
+#define DP4_ID              14
+#define RG_ID               15
+#define GN_ID               16
+#define OF_ID               17
+#define RTD_ID              18
+#define AZ_ID               19
+#define IN_ID               20
+#define OT_ID               21
+#define EI_ID               22
+#define EO_ID               23
+#define SM_ID               24
+#define LN_ID               25
+#define LS_ID               26
+#define LM_ID               27
+#define DB_ID               28
+#define UP_ID               29
+#define LL_ID               30
+#define FR_ID               31
+#define FT_ID               32
+#define PY_ID               33
+#define BD_ID               34
+#define AD_ID               35
+#define IM_ID               36
+#define RS_ID               37
+#define RE_ID               38
+#define DF_ID               39
+#define UNLOCK_ID           40
+#define LOCK_ID             41
+
+/* Mneumonic identifiers */
+
 struct MKSRequestStruct
 {
     int device_address;
@@ -115,6 +205,10 @@ void MKSSerialClass::manageReply()
         request->enquirying = false;
         request->pending = false;
         return;
+    }
+    else
+    {
+
     }
 }
 

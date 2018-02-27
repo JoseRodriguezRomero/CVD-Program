@@ -134,9 +134,11 @@ MainWindow::~MainWindow()
 {
     emit disconnectEurothermSerialPort();
     emit disconnectPfeifferSerialPort();
+    emit disconnectMKSSerialPort();
 
     emit deleteEurothermSerialClass();
     emit deletePfeifferSerialClass();
+    emit deleteMKSSerialClass();
 
     QTime delete_timer;
     delete_timer.start();
