@@ -309,7 +309,7 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     event_timer.setParent(this);
 
     reconnect_timer.setInterval(1000);
-    event_timer.setInterval(10);
+    event_timer.setInterval(30);
 
     modbus_client = nullptr;  // never forgetti mom's spaghetti
     reply = nullptr;

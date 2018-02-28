@@ -254,6 +254,7 @@ void MKSSerialClass::processRequestQueue()
     }
 
     msg.append('\r');
+    buffer.clear();
     serial_port->flush();
 
     if (serial_port->isWritable())

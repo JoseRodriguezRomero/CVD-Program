@@ -102,6 +102,7 @@ void BaseSerialClass::startEventLoop()
     connect(this,SIGNAL(stopEventLoopTimer()),&event_timer,SLOT(stop()));
 
     connectDevice();
+    failed_attempts = 0;
 
     if (!checkState())
     {

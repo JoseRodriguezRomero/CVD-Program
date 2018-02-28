@@ -4,7 +4,7 @@
 
 #define MAX_QUEUE_LEN   20
 
-#define PFEIFFER_DEFAULT_PORT_NAME          "COM1"
+#define PFEIFFER_DEFAULT_PORT_NAME          "COM21"
 #define PFEIFFER_DEFAULT_PARITY             QSerialPort::NoParity
 #define PFEIFFER_DEFAULT_BAUD_RATE          QSerialPort::Baud9600
 #define PFEIFFER_DEFAULT_STOP_BITS          QSerialPort::OneStop
@@ -313,6 +313,7 @@ void PfeifferSerialclass::processRequestQueue()
     msg.append('\r');
     msg.append('\n');
 
+    buffer.clear();
     serial_port->flush();
 
     if (serial_port->isWritable())
