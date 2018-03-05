@@ -228,40 +228,6 @@ struct EurothermRequestStruct {
     bool pending;
 };
 
-void shiftBitArray(QBitArray &bit_msg)
-{
-    QBitArray msg_shifted;
-    int len = bit_msg.size();
-    msg_shifted.resize(len-1);
-
-    for (int i = 1; i < len; i++)
-    {
-        if (bit_msg.at(i))
-        {
-            msg_shifted.setBit(i-1);
-        }
-    }
-
-    bit_msg = msg_shifted;
-}
-
-void reflectBitArray(QBitArray &bit_msg)
-{
-    QBitArray msg_reflected;
-    int len = bit_msg.size();
-    msg_reflected.resize(len);
-
-    for (int i = 0; i < len; i++)
-    {
-        if (bit_msg.at(i))
-        {
-            msg_reflected.setBit(len-1-i);
-        }
-    }
-
-    bit_msg = msg_reflected;
-}
-
 void computeCRC16LookupTable()
 {
     const quint64 generator = CRC_16_ANSI_POLY;
