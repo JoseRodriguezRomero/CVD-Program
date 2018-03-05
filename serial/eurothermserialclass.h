@@ -2,6 +2,8 @@
 #define EUROTHERMSERIALCLASS_H
 
 #include <QVariant>
+#include <QBitArray>
+#include <QByteArray>
 #include <QSerialPort>
 #include <QModbusReply>
 #include <QModbusClient>

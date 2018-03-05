@@ -12,6 +12,7 @@
 #define EUROTHERM_DEFAULT_FLOW_CONTROL      QSerialPort::NoFlowControl
 
 #define IEEE_REGION             0x8000
+#define CRC_16_ANSI_POLY        0x18005
 
 /* Modbus Adressess for Eurotherm 32xx series */
 
@@ -204,6 +205,8 @@
 
 /* Modbus Adressess for Eurotherm 32xx series */
 
+quint16 crc_lookup_table[65536];  // 2^16 combinations...
+
 enum RegisterType {
     Coil,
     DiscreteInput,
@@ -217,7 +220,7 @@ enum RequestType {
 };
 
 struct EurothermRequestStruct {
-    quint16 server_address;
+    quint8 server_address;
     quint16 start_address;
     RegisterType reg_type;
     RequestType req_type;
@@ -225,8 +228,105 @@ struct EurothermRequestStruct {
     bool pending;
 };
 
+void shiftBitArray(QBitArray &bit_msg)
+{
+    QBitArray msg_shifted;
+    int len = bit_msg.size();
+    msg_shifted.resize(len-1);
+
+    for (int i = 1; i < len; i++)
+    {
+        if (bit_msg.at(i))
+        {
+            msg_shifted.setBit(i-1);
+        }
+    }
+
+    bit_msg = msg_shifted;
+}
+
+void reflectBitArray(QBitArray &bit_msg)
+{
+    QBitArray msg_reflected;
+    int len = bit_msg.size();
+    msg_reflected.resize(len);
+
+    for (int i = 0; i < len; i++)
+    {
+        if (bit_msg.at(i))
+        {
+            msg_reflected.setBit(len-1-i);
+        }
+    }
+
+    bit_msg = msg_reflected;
+}
+
+void computeCRC16LookupTable()
+{
+    const quint64 generator = CRC_16_ANSI_POLY;
+    quint64 crc,aux_gen,mask;
+
+    for (int i = 0; i < 65536; i++)
+    {
+        crc = i;
+        crc <<= 16;
+        mask = 1;
+        mask <<= 31;
+
+        aux_gen = generator;
+        aux_gen <<= 15;
+
+        for (int i = 0; i < 16; i++)
+        {
+            if (mask & crc)
+            {
+                crc ^= aux_gen;
+            }
+
+            mask >>= 1;
+            aux_gen >>= 1;
+        }
+
+        crc_lookup_table[i] = static_cast<quint16>(crc);
+    }
+}
+
+void modbus16BitCRC(quint8 server_address, quint16 start_address,
+                    const QVector<quint16> &values)
+{
+    QVector<quint16> data;
+
+    if (start_address & IEEE_REGION)
+    {
+        quint32 init_frame = static_cast<quint32>(server_address);
+        init_frame <<= 8;
+        init_frame |= start_address;
+        data.append(init_frame);
+    }
+    else
+    {
+        quint32 init_frame = server_address;
+        data.append(init_frame);
+        init_frame = start_address;
+        data.append(init_frame);
+    }
+
+    data.append(values);
+    quint32 computed_crc = 0x00;
+    quint32 mask = 1;
+    mask <<= 15;
+
+    qDebug() << "Mask:              " << QString::number(mask,2);
+    qDebug() << "Current CRC:       " << QString::number(computed_crc,2);
+    qDebug() << "Current CRC (Hex): " << QString::number(computed_crc,2);
+    qDebug() << "-----------------------------------";
+
+    // make a bit array, use lookup table for faster CRC computation!
+}
+
 void add16BitRequestToQueue(QVector<void*> &request_queue,
-                            const quint16 server_address,
+                            const quint8 server_address,
                             const quint16 start_address,
                             const RegisterType reg_type,
                             const RequestType req_type,
@@ -251,7 +351,7 @@ void add16BitRequestToQueue(QVector<void*> &request_queue,
 }
 
 void add8BitRequestToQueue(QVector<void*> &request_queue,
-                           const quint16 server_address,
+                           const quint8 server_address,
                            const quint16 start_address,
                            const RegisterType reg_type,
                            const RequestType req_type,
@@ -263,7 +363,7 @@ void add8BitRequestToQueue(QVector<void*> &request_queue,
 }
 
 void addFloatRequestToQueue(QVector<void*> &request_queue,
-                            const quint16 server_address,
+                            const quint8 server_address,
                             const quint16 start_address,
                             const RegisterType reg_type,
                             const RequestType req_type,
@@ -313,6 +413,18 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
 
     modbus_client = nullptr;  // never forgetti mom's spaghetti
     reply = nullptr;
+
+    /* Dummy code */
+
+    quint8 server_address = 0x01;
+    quint8 start_addresss = 0x02;
+    QVector<quint16> msg;
+    //msg.append(0x73);
+
+    computeCRC16LookupTable();
+    modbus16BitCRC(server_address,start_addresss,msg);
+
+    /* Dummy code */
 }
 
 EurothermSerialClass::~EurothermSerialClass()
