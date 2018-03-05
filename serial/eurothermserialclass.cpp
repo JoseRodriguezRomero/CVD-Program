@@ -265,30 +265,27 @@ void modbus16BitCRC(quint8 server_address, quint16 start_address,
 
     if (start_address & IEEE_REGION)
     {
-        quint32 init_frame = static_cast<quint32>(server_address);
-        init_frame <<= 8;
-        init_frame |= start_address;
-        data.append(init_frame);
-    }
-    else
-    {
         quint32 init_frame = server_address;
         data.append(init_frame);
         init_frame = start_address;
         data.append(init_frame);
     }
+    else
+    {
+        quint32 init_frame = static_cast<quint32>(server_address);
+        init_frame <<= 8;
+        init_frame |= start_address;
+        data.append(init_frame);
+    }
 
     data.append(values);
     quint32 computed_crc = 0x00;
-    quint32 mask = 1;
-    mask <<= 15;
 
-    qDebug() << "Mask:              " << QString::number(mask,2);
-    qDebug() << "Current CRC:       " << QString::number(computed_crc,2);
-    qDebug() << "Current CRC (Hex): " << QString::number(computed_crc,2);
-    qDebug() << "-----------------------------------";
-
-    // make a bit array, use lookup table for faster CRC computation!
+    for (int i = 0; i < data.length(); i++)
+    {
+        computed_crc ^= data.at(i);
+        computed_crc = crc_lookup_table[computed_crc];
+    }
 }
 
 void add16BitRequestToQueue(QVector<void*> &request_queue,
@@ -383,9 +380,9 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     /* Dummy code */
 
     quint8 server_address = 0x01;
-    quint8 start_addresss = 0x02;
+    quint8 start_addresss = 0x09;
     QVector<quint16> msg;
-    //msg.append(0x73);
+    msg.append(0x43);
 
     computeCRC16LookupTable();
     modbus16BitCRC(server_address,start_addresss,msg);
