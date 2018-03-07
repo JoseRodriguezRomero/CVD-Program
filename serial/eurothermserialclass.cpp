@@ -220,7 +220,7 @@ enum RequestType {
 };
 
 struct EurothermRequestStruct {
-    quint8 server_address;
+    quint16 server_address;
     quint16 start_address;
     RegisterType reg_type;
     RequestType req_type;
@@ -258,25 +258,10 @@ void computeCRC16LookupTable()
     }
 }
 
-void modbus16BitCRC(quint8 server_address, quint16 start_address,
+quint16 modbus16BitCRC(quint16 server_address, quint16 start_address,
                     const QVector<quint16> &values)
 {
     QVector<quint16> data;
-
-    if (start_address & IEEE_REGION)
-    {
-        quint32 init_frame = server_address;
-        data.append(init_frame);
-        init_frame = start_address;
-        data.append(init_frame);
-    }
-    else
-    {
-        quint32 init_frame = static_cast<quint32>(server_address);
-        init_frame <<= 8;
-        init_frame |= start_address;
-        data.append(init_frame);
-    }
 
     data.append(values);
     quint32 computed_crc = 0x00;
@@ -286,10 +271,12 @@ void modbus16BitCRC(quint8 server_address, quint16 start_address,
         computed_crc ^= data.at(i);
         computed_crc = crc_lookup_table[computed_crc];
     }
+
+    return computed_crc;
 }
 
 void add16BitRequestToQueue(QVector<void*> &request_queue,
-                            const quint8 server_address,
+                            const quint16 server_address,
                             const quint16 start_address,
                             const RegisterType reg_type,
                             const RequestType req_type,
@@ -314,7 +301,7 @@ void add16BitRequestToQueue(QVector<void*> &request_queue,
 }
 
 void add8BitRequestToQueue(QVector<void*> &request_queue,
-                           const quint8 server_address,
+                           const quint16 server_address,
                            const quint16 start_address,
                            const RegisterType reg_type,
                            const RequestType req_type,
@@ -326,7 +313,7 @@ void add8BitRequestToQueue(QVector<void*> &request_queue,
 }
 
 void addFloatRequestToQueue(QVector<void*> &request_queue,
-                            const quint8 server_address,
+                            const quint16 server_address,
                             const quint16 start_address,
                             const RegisterType reg_type,
                             const RequestType req_type,
@@ -379,8 +366,8 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
 
     /* Dummy code */
 
-    quint8 server_address = 0x01;
-    quint8 start_addresss = 0x09;
+    quint16 server_address = 0x01;
+    quint16 start_addresss = 0x09;
     QVector<quint16> msg;
     msg.append(0x43);
 
