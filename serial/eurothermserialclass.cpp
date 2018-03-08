@@ -262,7 +262,8 @@ quint16 modbus16BitCRC(quint16 server_address, quint16 start_address,
                     const QVector<quint16> &values)
 {
     QVector<quint16> data;
-
+    data.append(server_address);
+    data.append(start_address);
     data.append(values);
     quint32 computed_crc = 0x00;
 
