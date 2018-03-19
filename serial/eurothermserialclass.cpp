@@ -14,6 +14,23 @@
 #define IEEE_REGION             0x8000
 #define CRC_16_ANSI_POLY        0x18005
 
+#define POW_2_8                 256
+#define POW_2_16                65536
+
+/* Modbus function identifiers */
+
+#define READ_COIL_FUNC          0x01
+#define WRIT_COIL_FUNC          0x05
+
+#define READ_DISC_INP_FUNC      0x02
+
+#define READ_HOLD_REG_FUNC      0x03
+#define WRIT_HOLD_REG_FUNC      0x10
+
+#define READ_IMP_REG_FUNC       0x04
+
+/* Modbus function identifiers */
+
 /* Modbus Adressess for Eurotherm 32xx series */
 
 #define PV_IN                   1       // (input-register)     float32
@@ -205,7 +222,8 @@
 
 /* Modbus Adressess for Eurotherm 32xx series */
 
-quint16 crc_lookup_table[65536];  // 2^16 combinations...
+unsigned int  crc_lookup_table[POW_2_16];           // 2^16 combinations...
+unsigned char byte_mirror_lookup_table[POW_2_8];    // 2^8  combinations...
 
 enum RegisterType {
     Coil,
@@ -230,10 +248,10 @@ struct EurothermRequestStruct {
 
 void computeCRC16LookupTable()
 {
-    const quint64 generator = CRC_16_ANSI_POLY;
-    quint64 crc,aux_gen,mask;
+    const unsigned int generator = CRC_16_ANSI_POLY;
+    unsigned int crc,aux_gen,mask;
 
-    for (int i = 0; i < 65536; i++)
+    for (int i = 0; i < POW_2_16; i++)
     {
         crc = i;
         crc <<= 16;
@@ -254,26 +272,194 @@ void computeCRC16LookupTable()
             aux_gen >>= 1;
         }
 
-        crc_lookup_table[i] = static_cast<quint16>(crc);
+        crc_lookup_table[i] = crc;
     }
 }
 
-quint16 modbus16BitCRC(quint16 server_address, quint16 start_address,
-                    const QVector<quint16> &values)
+void computeReverse8BitTable()
 {
-    QVector<quint16> data;
-    data.append(server_address);
-    data.append(start_address);
-    data.append(values);
-    quint32 computed_crc = 0x00;
+    unsigned char reverse;
 
+    for (int i = 0; i < POW_2_8; i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            if (i & (1 << j))
+            {
+                reverse |= (1 << (7 - j));
+            }
+            else
+            {
+                reverse &= (~(1 << (7 - j)));
+            }
+        }
+
+        byte_mirror_lookup_table[i] = reverse;
+    }
+}
+
+void mirrorByteArray(QVector<unsigned char> &data)
+{
     for (int i = 0; i < data.length(); i++)
     {
-        computed_crc ^= data.at(i);
+        data[i] = byte_mirror_lookup_table[data.at(i)];
+    }
+}
+
+unsigned int modbus16BitCRC(QVector<unsigned char> data)
+{
+    mirrorByteArray(data);
+
+    unsigned int computed_crc;
+    unsigned int aux;
+
+    if (data.length() & 1)
+    {
+        computed_crc = 0x00FF;
+        data.insert(0,0xFF);
+    }
+    else
+    {
+        computed_crc = 0xFFFF;
+    }
+
+    int len = (data.length() >> 1);
+
+    for (int i = 0; i < len; i++)
+    {
+        aux = data.at(i*2) << 8;
+        aux |= data.at(i*2 + 1);
+
+        computed_crc ^= aux;
         computed_crc = crc_lookup_table[computed_crc];
     }
 
+    unsigned char r_bits = ((computed_crc & 0xFF00) >> 8);
+    unsigned char l_bits = (computed_crc & 0x00FF);
+
+    l_bits = byte_mirror_lookup_table[l_bits];
+    r_bits = byte_mirror_lookup_table[r_bits];
+
+    computed_crc = (l_bits << 8);
+    computed_crc |= r_bits;
+
     return computed_crc;
+}
+
+QByteArray generateModbusRequestString(const EurothermRequestStruct &request)
+{
+    QVector<unsigned char> buffer;
+    buffer.append(0xFF & request.server_address);
+
+    switch (request.reg_type) {
+    case Coil:
+        switch (request.req_type) {
+        case ReadRequest:
+            buffer.append(READ_COIL_FUNC);
+            break;
+        case WriteRequest:
+            buffer.append(WRIT_COIL_FUNC);
+            break;
+        default:
+            return QByteArray();
+        }
+        break;
+    case DiscreteInput:
+        switch (request.req_type) {
+        case ReadRequest:
+            buffer.append(READ_DISC_INP_FUNC);
+            break;
+        default:
+            return QByteArray();
+        }
+        break;
+    case HoldingRegister:
+        switch (request.req_type) {
+        case ReadRequest:
+            buffer.append(READ_HOLD_REG_FUNC);
+            break;
+        case WriteRequest:
+            buffer.append(WRIT_HOLD_REG_FUNC);
+            break;
+        default:
+            return QByteArray();
+        }
+        break;
+    case InputRegister:
+        switch (request.req_type) {
+        case ReadRequest:
+            buffer.append(READ_IMP_REG_FUNC);
+            break;
+        default:
+            return QByteArray();
+        }
+        break;
+    default:
+        return QByteArray();
+    }
+
+    unsigned char l_address = ((request.start_address & 0xFF00) >> 8);
+    unsigned char r_address =  (request.start_address & 0x00FF);
+
+    buffer.append(l_address);
+    buffer.append(r_address);
+
+    int len = request.values.length();
+
+    if ((request.reg_type == HoldingRegister) ||
+            request.reg_type == InputRegister)
+    {
+        int i = 0;
+
+        while ((1 << (i*16)) < len)
+        {
+            i++;
+        }
+        i*= 2;
+
+        while (i > 0)
+        {
+            unsigned char aux_cast;
+            aux_cast = ((0xFFFF << (i-1)*8) & len);
+            buffer.append(aux_cast);
+            i--;
+        }
+    }
+
+    if (request.req_type == WriteRequest)
+    {
+        unsigned char aux1, aux2;
+        for (int i = 0; i < len; i++)
+        {
+            aux1 = (request.values.at(i) & 0xFF00) >> 8;
+            aux2 = (request.values.at(i) & 0x00FF);
+            buffer.append(static_cast<unsigned char>(aux1));
+            buffer.append(static_cast<unsigned char>(aux2));
+        }
+    }
+
+    unsigned int crc = modbus16BitCRC(buffer);
+
+    unsigned char l_crc = ((crc & 0xFF00) >> 8);
+    unsigned char r_crc =  (crc & 0x00FF);
+
+    buffer.append(r_crc);
+    buffer.append(l_crc);
+
+    QByteArray byte_array;
+
+    unsigned char *aux_ptr1;
+    char *aux_ptr2;
+
+    for (int i = 0; i < buffer.length(); i++)
+    {
+        aux_ptr1 = &(buffer[i]);
+        aux_ptr2 = reinterpret_cast<char*>(aux_ptr1);
+
+        byte_array.append(*aux_ptr2);
+    }
+
+    return byte_array;
 }
 
 void add16BitRequestToQueue(QVector<void*> &request_queue,
@@ -313,6 +499,28 @@ void add8BitRequestToQueue(QVector<void*> &request_queue,
                            static_cast<quint16>(value));
 }
 
+void addBoolRequestToQueue(QVector<void*> &request_queue,
+                           const quint16 server_address,
+                           const quint16 start_address,
+                           const RegisterType reg_type,
+                           const RequestType req_type,
+                           const bool value = true)
+{
+    quint16 cast;
+
+    switch (value) {
+    case true:
+        cast = 0xFF00;
+        break;
+    default:
+        cast = 0x0000;
+        break;
+    }
+
+    add16BitRequestToQueue(request_queue,server_address,
+                           start_address,reg_type,req_type,cast);
+}
+
 void addFloatRequestToQueue(QVector<void*> &request_queue,
                             const quint16 server_address,
                             const quint16 start_address,
@@ -350,6 +558,9 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
 {
     this->setParent(parent);
 
+    computeCRC16LookupTable();
+    computeReverse8BitTable();
+
     port_name = EUROTHERM_DEFAULT_PORT_NAME;
     baud_rate = EUROTHERM_DEFAULT_BAUD_RATE;
     port_parity = EUROTHERM_DEFAULT_PARITY;
@@ -367,13 +578,12 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
 
     /* Dummy code */
 
-    quint16 server_address = 0x01;
-    quint16 start_addresss = 0x09;
-    QVector<quint16> msg;
-    msg.append(0x43);
+    QVector<unsigned char> data;
+    data.append(0x12);
+    data.append(0x13);
+    data.append(0x74);
 
-    computeCRC16LookupTable();
-    modbus16BitCRC(server_address,start_addresss,msg);
+    modbus16BitCRC(data);
 
     /* Dummy code */
 }
@@ -1588,6 +1798,8 @@ void EurothermSerialClass::processRequestQueue()
     data_unit.setRegisterType(reg_type);
     data_unit.setStartAddress(start_address);
     data_unit.setValueCount(request->values.length());
+
+    generateModbusRequestString(*request);
 
     switch (request->req_type)
     {
