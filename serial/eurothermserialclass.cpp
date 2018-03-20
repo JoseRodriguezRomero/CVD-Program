@@ -246,6 +246,24 @@ struct EurothermRequestStruct {
     bool pending;
 };
 
+struct EurotherReplyStruct {
+    unsigned int server_address;
+    unsigned int start_address;
+    RegisterType reg_type;
+    RequestType req_type;
+
+    float float_cast;
+
+    int int_cast;
+    char char_cast;
+
+    unsigned int uint_cast;
+    unsigned char uchar_cast;
+
+    bool bool_cast;
+    bool valid_reply;
+};
+
 void computeCRC16LookupTable()
 {
     const unsigned int generator = CRC_16_ANSI_POLY;
@@ -462,6 +480,51 @@ QByteArray generateModbusRequestString(const EurothermRequestStruct &request)
     return byte_array;
 }
 
+EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
+{
+    EurotherReplyStruct ret;
+
+    if (byte_array.length() < 4)
+    {
+        ret.valid_reply = false;
+        return ret;
+    }
+
+    QVector<unsigned char> data;
+
+    char *aux_ptr1;
+    unsigned char *aux_ptr2;
+
+    for (int i = 0; i < byte_array.length() - 2; i++)
+    {
+        char byte = byte_array.at(i);
+        aux_ptr1 = &(byte);
+        aux_ptr2 = reinterpret_cast<unsigned char*>(aux_ptr1);
+
+        data.append(*aux_ptr2);
+    }
+
+    unsigned int computed_crc = modbus16BitCRC(data);
+
+    aux_ptr1 = &(byte_array[byte_array.length()-2]);
+    aux_ptr2 = reinterpret_cast<unsigned char*>(aux_ptr1);
+
+    unsigned int obtained_crc = ((*aux_ptr2) << 8);
+
+    aux_ptr1 = &(byte_array[byte_array.length()-1]);
+    aux_ptr2 = reinterpret_cast<unsigned char*>(aux_ptr1);
+
+    obtained_crc |= aux_ptr2;
+
+    if (obtained_crc != computed_crc)
+    {
+        ret.valid_reply = false;
+        return ret;
+    }
+
+    return ret;
+}
+
 void add16BitRequestToQueue(QVector<void*> &request_queue,
                             const quint16 server_address,
                             const quint16 start_address,
@@ -575,17 +638,6 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
 
     modbus_client = nullptr;  // never forgetti mom's spaghetti
     reply = nullptr;
-
-    /* Dummy code */
-
-    QVector<unsigned char> data;
-    data.append(0x12);
-    data.append(0x13);
-    data.append(0x74);
-
-    modbus16BitCRC(data);
-
-    /* Dummy code */
 }
 
 EurothermSerialClass::~EurothermSerialClass()
@@ -753,33 +805,33 @@ bool EurothermSerialClass::processPending() const
 
 void EurothermSerialClass::requestReadPVInputValue(const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,PV_IN,
-                           InputRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,PV_IN,InputRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadTargetSetpoint(const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,TG_SP,
-                           HoldingRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,TG_SP,HoldingRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadManualOutputValue(
         const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,MAN_OP,
-                           InputRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,MAN_OP,InputRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadWorkingOutput(const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,WRK_OP,
-                           InputRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,WRK_OP,InputRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadWorkingSetpoint(const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,WRK_SP,
-                           InputRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,WRK_SP,InputRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadProportionalBand(const int server_address)
@@ -790,8 +842,8 @@ void EurothermSerialClass::requestReadProportionalBand(const int server_address)
 
 void EurothermSerialClass::requestReadControlAction(const int server_address)
 {
-    add16BitRequestToQueue(request_queue,server_address,CTRL_A,
-                           InputRegister,ReadRequest);
+    add16BitRequestToQueue(request_queue,server_address,CTRL_A,InputRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadIntegralTime(const int server_address)
@@ -809,15 +861,15 @@ void EurothermSerialClass::requestReadDerivativeTime(const int server_address)
 void EurothermSerialClass::requestReadInputRangeLowLimit(
         const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,RNG_LO,
-                           InputRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,RNG_LO,InputRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadInputRangeHighLimit(
         const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,RNG_HI,
-                           InputRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,RNG_HI,InputRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadAlarmThreshold(const int server_address,
@@ -873,8 +925,8 @@ void EurothermSerialClass::requestReadRelativeCoolCh2Gain(
 
 void EurothermSerialClass::requestReadTimerStatus(const int server_address)
 {
-    add8BitRequestToQueue(request_queue,server_address,T_STAT,
-                          HoldingRegister,ReadRequest);
+    add8BitRequestToQueue(request_queue,server_address,T_STAT,HoldingRegister,
+                          ReadRequest);
 }
 
 void EurothermSerialClass::requestReadSetpoint(const int server_address,
@@ -899,14 +951,14 @@ void EurothermSerialClass::requestReadSetpoint(const int server_address,
 
 void EurothermSerialClass::requestReadRemoteSetpoint(const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,RM_SP,
-                           HoldingRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,RM_SP,HoldingRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadLocalTrim(const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,LOC_T,
-                           HoldingRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,LOC_T,HoldingRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadManualReset(const int server_address)
@@ -917,34 +969,34 @@ void EurothermSerialClass::requestReadManualReset(const int server_address)
 
 void EurothermSerialClass::requestReadOutputHighLimit(const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,OP_HI,
-                           HoldingRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,OP_HI,HoldingRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadOutputLowLimit(const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,OP_LO,
-                           HoldingRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,OP_LO,HoldingRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadSafeOutputValueforSensorBreak(
         const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,SAFE,
-                           HoldingRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,SAFE,HoldingRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadSetpointRateLimitValue(
         const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,SP_RAT,
-                           HoldingRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,SP_RAT,HoldingRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadCalculatedError(const int server_address)
 {
-    addFloatRequestToQueue(request_queue,server_address,P_ERR,
-                           InputRegister,ReadRequest);
+    addFloatRequestToQueue(request_queue,server_address,P_ERR,InputRegister,
+                           ReadRequest);
 }
 
 void EurothermSerialClass::requestReadAlarmHysteresis(const int server_address,
@@ -983,8 +1035,8 @@ void EurothermSerialClass::resquestReadInstrumentStatus(
 void EurothermSerialClass::requestWriteTargetSetpoint(
         const int server_address, const float setpoint)
 {
-    addFloatRequestToQueue(request_queue,server_address,TG_SP,
-                           HoldingRegister,WriteRequest,setpoint);
+    addFloatRequestToQueue(request_queue,server_address,TG_SP,HoldingRegister,
+                           WriteRequest,setpoint);
 }
 
 void EurothermSerialClass::requestWriteProportionalBand(
@@ -1008,9 +1060,8 @@ void EurothermSerialClass::requestWriteDerivativeTime(const int server_address,
                            WriteRequest,td);
 }
 
-void EurothermSerialClass::requestWriteAlarmThreshold(const int server_address,
-                                                      const Alarm alarm,
-                                                      const float a)
+void EurothermSerialClass::requestWriteAlarmThreshold(
+        const int server_address, const Alarm alarm, const float a)
 {
     int start_address = 0;
 
@@ -1045,8 +1096,8 @@ void EurothermSerialClass::requestWriteActiveSetpoint(
         return;
     }
 
-    add8BitRequestToQueue(request_queue,server_address,SP_SEL,
-                          HoldingRegister,WriteRequest,sp_sel);
+    add8BitRequestToQueue(request_queue,server_address,SP_SEL,HoldingRegister,
+                          WriteRequest,sp_sel);
 }
 
 void EurothermSerialClass::requestWriteChannel2Deadband(
@@ -1066,15 +1117,15 @@ void EurothermSerialClass::requestWriteCutbackLow(
 void EurothermSerialClass::requestWriteCutbackHigh(
         const int server_address, const float cb_hi)
 {
-    addFloatRequestToQueue(request_queue,server_address,CB_HI,
-                           HoldingRegister,WriteRequest,cb_hi);
+    addFloatRequestToQueue(request_queue,server_address,CB_HI,HoldingRegister,
+                           WriteRequest,cb_hi);
 }
 
 void EurothermSerialClass::requestWriteRelativeCoolCh2Gain(
         const int server_address, const float r2g)
 {
-    addFloatRequestToQueue(request_queue,server_address,R2G,
-                           HoldingRegister,WriteRequest,r2g);
+    addFloatRequestToQueue(request_queue,server_address,R2G,HoldingRegister,
+                           WriteRequest,r2g);
 }
 
 void EurothermSerialClass::requestWriteTimerStatus(
@@ -1100,13 +1151,12 @@ void EurothermSerialClass::requestWriteTimerStatus(
         return;
     }
 
-    add8BitRequestToQueue(request_queue,server_address,T_STAT,
-                          HoldingRegister,WriteRequest,status_sel);
+    add8BitRequestToQueue(request_queue,server_address,T_STAT,HoldingRegister,
+                          WriteRequest,status_sel);
 }
 
-void EurothermSerialClass::requestWriteSetpoint(const int server_address,
-                                                const int sp_num,
-                                                const float sp)
+void EurothermSerialClass::requestWriteSetpoint(
+        const int server_address, const int sp_num, const float sp)
 {
     int start_address = 0;
 
@@ -1128,8 +1178,8 @@ void EurothermSerialClass::requestWriteSetpoint(const int server_address,
 void EurothermSerialClass::requestWriteRemoteSetpoint(
         const int server_address, const float rm_sp)
 {
-    addFloatRequestToQueue(request_queue,server_address,RM_SP,
-                           HoldingRegister,WriteRequest,rm_sp);
+    addFloatRequestToQueue(request_queue,server_address,RM_SP,HoldingRegister,
+                           WriteRequest,rm_sp);
 }
 
 void EurothermSerialClass::requestWriteLocalTrim(const int server_address,
@@ -1149,34 +1199,33 @@ void EurothermSerialClass::requestWriteManualReset(
 void EurothermSerialClass::requestWriteOutputHighLimit(
         const int server_address, const float op_hi)
 {
-    addFloatRequestToQueue(request_queue,server_address,OP_HI,
-                           HoldingRegister,WriteRequest,op_hi);
+    addFloatRequestToQueue(request_queue,server_address,OP_HI,HoldingRegister,
+                           WriteRequest,op_hi);
 }
 
 void EurothermSerialClass::requestWriteOutputLowLimit(
         const int server_address, const float op_lo)
 {
-    addFloatRequestToQueue(request_queue,server_address,OP_LO,
-                           HoldingRegister,WriteRequest,op_lo);
+    addFloatRequestToQueue(request_queue,server_address,OP_LO,HoldingRegister,
+                           WriteRequest,op_lo);
 }
 
 void EurothermSerialClass::requestWriteSafeOutputValueforSensorBreak(
         const int server_address, const float safe)
 {
-    addFloatRequestToQueue(request_queue,server_address,SAFE,
-                           HoldingRegister,WriteRequest,safe);
+    addFloatRequestToQueue(request_queue,server_address,SAFE,HoldingRegister,
+                           WriteRequest,safe);
 }
 
 void EurothermSerialClass::requestWriteSetpointRateLimitValue(
         const int server_address, const float sp_rat)
 {
-    addFloatRequestToQueue(request_queue,server_address,SP_RAT,
-                           HoldingRegister,WriteRequest,sp_rat);
+    addFloatRequestToQueue(request_queue,server_address,SP_RAT,HoldingRegister,
+                           WriteRequest,sp_rat);
 }
 
-void EurothermSerialClass::requestWriteAlarmHysteresis(const int server_address,
-                                                       const Alarm alarm,
-                                                       const float a_hys)
+void EurothermSerialClass::requestWriteAlarmHysteresis(
+        const int server_address, const Alarm alarm, const float a_hys)
 {
     int start_address = 0;
 
