@@ -506,15 +506,14 @@ EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
 
     unsigned int computed_crc = modbus16BitCRC(data);
 
-    aux_ptr1 = &(byte_array[byte_array.length()-2]);
+    char byte;
+    aux_ptr1 = &byte;
     aux_ptr2 = reinterpret_cast<unsigned char*>(aux_ptr1);
 
+    byte = byte_array.at(byte_array.length()-2);
     unsigned int obtained_crc = ((*aux_ptr2) << 8);
-
-    aux_ptr1 = &(byte_array[byte_array.length()-1]);
-    aux_ptr2 = reinterpret_cast<unsigned char*>(aux_ptr1);
-
-    obtained_crc |= aux_ptr2;
+    byte = byte_array.at(byte_array.length()-1);
+    obtained_crc |= (*aux_ptr2);
 
     if (obtained_crc != computed_crc)
     {
