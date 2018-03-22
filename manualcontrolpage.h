@@ -31,7 +31,7 @@ private:
     QDoubleSpinBox temp_ramp_right;
 
     QLineEdit mfc_flow;
-    QLineEdit mfc_pressure;
+    QLineEdit mfc_status;
     QDoubleSpinBox mfc_setpoint;
 
     QLineEdit gauge_pressure;

@@ -522,11 +522,13 @@ void castByteArrayTo16BitArray(const QByteArray data,
 void castByteArrayToUnsigned8BitArray(const QByteArray data,
                                       EurotherReplyStruct &reply_struct)
 {
+
 }
 
 void castByteArrayToUnsigned16BitArray(const QByteArray data,
                                        EurotherReplyStruct &reply_struct)
 {
+
 }
 
 EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)

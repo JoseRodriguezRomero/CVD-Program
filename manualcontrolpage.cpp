@@ -46,7 +46,7 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
             static_cast<QGridLayout*>(eurotherm_left_gbox->layout());
 
     QLabel *eurotherm_label1_left = new QLabel(this);
-    eurotherm_label1_left->setText("Working\nSetpoint [ºC]");
+    eurotherm_label1_left->setText("Actual Value\n[ºC]");
     eurotherm_label1_left->setAlignment(LABEL_ALIGMENT);
     eurotherm_left_gbox_layout->addWidget(
                 eurotherm_label1_left,0,0,1,1);
@@ -82,7 +82,7 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
             static_cast<QGridLayout*>(eurotherm_center_gbox->layout());
 
     QLabel *eurotherm_label1_center = new QLabel(this);
-    eurotherm_label1_center->setText("Working\nSetpoint [ºC]");
+    eurotherm_label1_center->setText("Actual Value\n[ºC]");
     eurotherm_label1_center->setAlignment(LABEL_ALIGMENT);
     eurotherm_center_gbox_layout->addWidget(
                 eurotherm_label1_center,0,0,1,1);
@@ -118,7 +118,7 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
             static_cast<QGridLayout*>(eurotherm_right_gbox->layout());
 
     QLabel *eurotherm_label1_right = new QLabel(this);
-    eurotherm_label1_right->setText("Working\nSetpoint [ºC]");
+    eurotherm_label1_right->setText("Actual Value\n[ºC]");
     eurotherm_label1_right->setAlignment(LABEL_ALIGMENT);
     eurotherm_right_gbox_layout->addWidget(
                 eurotherm_label1_right,0,0,1,1);
@@ -150,7 +150,7 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
             static_cast<QGridLayout*>(mks_gbox->layout());
 
     QLabel *mks_label1 = new QLabel(this);
-    mks_label1->setText("Operating Mass\nFlow [sccm]");
+    mks_label1->setText("Actual Value\n[sccm]");
     mks_label1->setAlignment(LABEL_ALIGMENT);
     mks_gbox_layout->addWidget(mks_label1,0,0,1,1);
 
@@ -158,12 +158,12 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
     mks_gbox_layout->addWidget(&mfc_flow,0,1,1,1);
 
     QLabel *mks_label2 = new QLabel(this);
-    mks_label2->setText("Operating Pressure\n[mbar]");
+    mks_label2->setText("MFC Status");
     mks_label2->setAlignment(LABEL_ALIGMENT);
     mks_gbox_layout->addWidget(mks_label2,1,0,1,1);
 
-    mfc_pressure.setDisabled(true);
-    mks_gbox_layout->addWidget(&mfc_pressure,1,1,1,1);
+    mfc_status.setDisabled(true);
+    mks_gbox_layout->addWidget(&mfc_status,1,1,1,1);
 
     QLabel *mks_label3 = new QLabel(this);
     mks_label3->setText("Mass Flow\nSetpoint [sccm]");
@@ -171,7 +171,6 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
     mks_gbox_layout->addWidget(mks_label3,2,0,1,1);
 
     mks_gbox_layout->addWidget(&mfc_setpoint,2,1,1,1);
-
 
     pfeiffer_gbox->setLayout(new QGridLayout(pfeiffer_gbox));
     QGridLayout *pfeiffer_gbox_layout =
