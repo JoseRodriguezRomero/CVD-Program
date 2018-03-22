@@ -134,12 +134,19 @@ struct PfeifferRequestStruct
     bool enquirying;
 };
 
+void deletePfeifferRequest(void* request_ptr)
+{
+    PfeifferRequestStruct *aux_ptr;
+    aux_ptr = static_cast<PfeifferRequestStruct*>(request_ptr);
+    delete aux_ptr;
+}
+
 void addReadRequestToQueue(QVector<void*> &request_queue,
                            int mneumonic_id, QString mneumonic)
 {
     while (request_queue.length() > MAX_QUEUE_LEN)
     {
-        delete request_queue.at(0);
+        deletePfeifferRequest(request_queue.at(0));
         request_queue.removeAt(0);
     }
 
@@ -165,7 +172,7 @@ void addWriteRequestToQueue(QVector<void*> &request_queue,
 {
     while (request_queue.length() > MAX_QUEUE_LEN)
     {
-        delete request_queue.at(0);
+        deletePfeifferRequest(request_queue.at(0));
         request_queue.removeAt(0);
     }
 
@@ -180,12 +187,7 @@ void addWriteRequestToQueue(QVector<void*> &request_queue,
     new_request->pending = false;
     new_request->enquiry = true;
     new_request->enquirying = false;
-    new_request->args.clear();
-
-    for (int i = 0; i < args.length(); i++)
-    {
-        new_request->args.append(args.at(i));
-    }
+    new_request->args = args;
 
     request_queue.append(new_request);
 }

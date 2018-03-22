@@ -247,21 +247,21 @@ struct EurothermRequestStruct {
 };
 
 struct EurotherReplyStruct {
-    unsigned int server_address;
+    unsigned char server_address;
     unsigned int start_address;
     RegisterType reg_type;
     RequestType req_type;
-
-    float float_cast;
-
-    int int_cast;
-    char char_cast;
-
-    unsigned int uint_cast;
-    unsigned char uchar_cast;
-
-    bool bool_cast;
     bool valid_reply;
+
+    QVector<float> float_cast;
+
+    QVector<char> cast_8bit;
+    QVector<short> cast_16bit;
+
+    QVector<unsigned char> cast_u8bit;
+    QVector<unsigned short> cast_u16bit;
+
+    QVector<bool> bool_cast;
 };
 
 void computeCRC16LookupTable()
@@ -433,7 +433,7 @@ QByteArray generateModbusRequestString(const EurothermRequestStruct &request)
         {
             i++;
         }
-        i*= 2;
+        i <<= 1;
 
         while (i > 0)
         {
@@ -449,8 +449,8 @@ QByteArray generateModbusRequestString(const EurothermRequestStruct &request)
         unsigned char aux1, aux2;
         for (int i = 0; i < len; i++)
         {
-            aux1 = (request.values.at(i) & 0xFF00) >> 8;
-            aux2 = (request.values.at(i) & 0x00FF);
+            aux1 = ((request.values.at(i) & 0xFF00) >> 8);
+            aux2 =  (request.values.at(i) & 0x00FF);
             buffer.append(static_cast<unsigned char>(aux1));
             buffer.append(static_cast<unsigned char>(aux2));
         }
@@ -480,9 +480,59 @@ QByteArray generateModbusRequestString(const EurothermRequestStruct &request)
     return byte_array;
 }
 
+void castByteArrayToFloatArray(const QByteArray data,
+                               EurotherReplyStruct &reply_struct)
+{
+    if (data.length() & 0x3)
+    {
+        return;
+    }
+
+    int len = data.length() / 4;
+    unsigned long buff;
+    unsigned long *aux_ptr1 = &buff;
+    float *aux_ptr2 = reinterpret_cast<float*>(aux_ptr1);
+
+    for (int i = 0; i < len; i++)
+    {
+        buff = 0;
+        for (int j = 0; j < 4; j++)
+        {
+            buff = ((buff << 8) | data.at(i*4 + j));
+        }
+        reply_struct.float_cast.append(*aux_ptr2);
+    }
+}
+
+void castByteArrayTo8BitArray(const QByteArray data,
+                              EurotherReplyStruct &reply_struct)
+{
+    for (int i = 0; i < data.length(); i++)
+    {
+        reply_struct.cast_8bit.append(data.at(i));
+    }
+}
+
+void castByteArrayTo16BitArray(const QByteArray data,
+                               EurotherReplyStruct &reply_struct)
+{
+
+}
+
+void castByteArrayToUnsigned8BitArray(const QByteArray data,
+                                      EurotherReplyStruct &reply_struct)
+{
+}
+
+void castByteArrayToUnsigned16BitArray(const QByteArray data,
+                                       EurotherReplyStruct &reply_struct)
+{
+}
+
 EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
 {
     EurotherReplyStruct ret;
+    ret.valid_reply = true;
 
     if (byte_array.length() < 4)
     {
@@ -510,15 +560,81 @@ EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
     aux_ptr1 = &byte;
     aux_ptr2 = reinterpret_cast<unsigned char*>(aux_ptr1);
 
-    byte = byte_array.at(byte_array.length()-2);
-    unsigned int obtained_crc = ((*aux_ptr2) << 8);
     byte = byte_array.at(byte_array.length()-1);
+    unsigned int obtained_crc = ((*aux_ptr2) << 8);
+    byte = byte_array.at(byte_array.length()-2);
     obtained_crc |= (*aux_ptr2);
 
     if (obtained_crc != computed_crc)
     {
         ret.valid_reply = false;
         return ret;
+    }
+
+    byte = byte_array.at(0);
+    ret.start_address = *aux_ptr2;
+
+    byte = byte_array.at(1);
+    switch (byte) {
+    case READ_COIL_FUNC:
+        ret.reg_type = Coil;
+        ret.req_type = ReadRequest;
+        break;
+    case WRIT_COIL_FUNC:
+        ret.reg_type = Coil;
+        ret.req_type = WriteRequest;
+        break;
+    case READ_DISC_INP_FUNC:
+        ret.reg_type = DiscreteInput;
+        ret.req_type = ReadRequest;
+        break;
+    case READ_HOLD_REG_FUNC:
+        ret.reg_type = HoldingRegister;
+        ret.req_type = ReadRequest;
+        break;
+    case WRIT_HOLD_REG_FUNC:
+        ret.reg_type = HoldingRegister;
+        ret.req_type = WriteRequest;
+        break;
+    case READ_IMP_REG_FUNC:
+        ret.reg_type = InputRegister;
+        ret.req_type = ReadRequest;
+        break;
+    default:
+        ret.valid_reply = false;
+        return ret;
+    }
+
+    byte = byte_array.at(2);
+    ret.start_address = *aux_ptr2;
+    byte = byte_array.at(3);
+    ret.start_address = ((ret.start_address) << 8) | (*aux_ptr2);
+
+    if ((ret.reg_type == HoldingRegister) || (ret.reg_type == InputRegister))
+    {
+        unsigned char data_len = byte_array.at(4);
+        data_len = ((data_len << 8) | (byte_array.at(5)));
+
+        if (data_len != (byte_array.length() - 8))
+        {
+            ret.valid_reply = false;
+            return ret;
+        }
+
+        QByteArray data_array = byte_array;
+        data_array.remove(data_array.length()-2,2);
+        data_array.remove(0,6);
+
+        castByteArrayToFloatArray(data_array,ret);
+        castByteArrayTo8BitArray(data_array,ret);
+        castByteArrayTo16BitArray(data_array,ret);
+        castByteArrayToUnsigned8BitArray(data_array,ret);
+        castByteArrayToUnsigned16BitArray(data_array,ret);
+    }
+    else
+    {
+        byte = byte_array.at(byte_array.length() - 3);
+        ret.bool_cast.append(byte ? true : false);
     }
 
     return ret;

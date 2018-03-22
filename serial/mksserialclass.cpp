@@ -103,15 +103,67 @@
 
 struct MKSRequestStruct
 {
-    int device_address;
     int channel;
     int mneumonic_id;
     QString mneumonic;
     QVector<QString> args;
+    bool write_request;
     bool pending;
     bool enquiry;
     bool enquirying;
 };
+
+void deleteMKSRequest(void* request_ptr)
+{
+    MKSRequestStruct *aux_ptr;
+    aux_ptr = static_cast<MKSRequestStruct*>(request_ptr);
+    delete aux_ptr;
+}
+
+void addReadRequestToQueue(QVector<void*> &request_queue, int mneumonic_id,
+                           QString mneumonic, int channel)
+{
+    while (request_queue.length() > MAX_QUEUE_LEN)
+    {
+        deleteMKSRequest(request_queue.at(0));
+        request_queue.removeAt(0);
+    }
+
+    MKSRequestStruct *new_request = new MKSRequestStruct;
+    new_request->channel = channel;
+    new_request->mneumonic_id = mneumonic_id;
+    new_request->mneumonic = mneumonic;
+    new_request->pending = false;
+    new_request->enquiry = true;
+    new_request->enquirying = false;
+    new_request->write_request = false;
+    new_request->args.clear();
+
+    request_queue.append(new_request);
+}
+
+void addWriteRequestToQueue(QVector<void*> &request_queue, int mneumonic_id,
+                            QString mneumonic, int channel,
+                            const QVector<QString> &args)
+{
+    while (request_queue.length() > MAX_QUEUE_LEN)
+    {
+        deleteMKSRequest(request_queue.at(0));
+        request_queue.removeAt(0);
+    }
+
+    MKSRequestStruct *new_request = new MKSRequestStruct;
+    new_request->channel = channel;
+    new_request->mneumonic_id = mneumonic_id;
+    new_request->mneumonic = mneumonic;
+    new_request->pending = false;
+    new_request->enquiry = true;
+    new_request->enquirying = false;
+    new_request->write_request = true;
+    new_request->args = args;
+
+    request_queue.append(new_request);
+}
 
 MKSSerialClass::MKSSerialClass(QObject *parent)
 {
@@ -223,11 +275,9 @@ void MKSSerialClass::processRequestQueue()
     QByteArray msg;
     msg.clear();
 
-    msg.append('@');
-    msg.append(QString::number(request->device_address));
     msg.append('?');
 
-    if (request->args.length() > 0)
+    if (request->write_request)
     {
         msg.append('!');
     }
@@ -380,6 +430,89 @@ bool MKSSerialClass::checkState()
     emit deviceConnected(serial_port->error());
 
     return status;
+}
+
+void MKSSerialClass::requestReadDisplayText()
+{
+    addReadRequestToQueue(request_queue,DT_ID,DT,-1);
+}
+
+void MKSSerialClass::requestReadLastKey()
+{
+    addReadRequestToQueue(request_queue,KY_ID,KY,-1);
+}
+
+void MKSSerialClass::requestReadDisplayDialog()
+{
+    addReadRequestToQueue(request_queue,DG_ID,DG,-1);
+}
+
+void MKSSerialClass::requestWriteDisplayText(const QString &text)
+{
+    QVector<QString> args;
+    args.append(text);
+    addWriteRequestToQueue(request_queue,DT_ID,DT,-1,args);
+}
+
+void MKSSerialClass::requestWriteDisplayDialog(
+        const MKSSerialClass::DisplayDialog dialog)
+{
+    QVector<QString> args;
+
+    switch (dialog) {
+    case ConfigurableDisplay0:
+        args.append("0");
+        break;
+    case ConfigurableDisplay1:
+        args.append("1");
+        break;
+    case ConfigurableDisplay2:
+        args.append("2");
+        break;
+    case UserDisplay:
+        args.append("3");
+        break;
+    case StatusDisplay:
+        args.append("4");
+        break;
+    case AutoTriggerAndSwitches:
+        args.append("5");
+        break;
+    case SetupMode:
+        args.append("6");
+        break;
+    case SetupDisplay1And2:
+        args.append("7");
+        break;
+    case SetupDisplay3And4:
+        args.append("8");
+        break;
+    case SetpointSetup:
+        args.append("9");
+        break;
+    case RangeSetup:
+        args.append("10");
+        break;
+    case Gain1:
+        args.append("11");
+        break;
+    case Gain2:
+        args.append("12");
+        break;
+    case RTDOffset:
+        args.append("13");
+        break;
+    case Channel1IOScale:
+        args.append("14");
+        break;
+    case Channl2IOScale:
+        args.append("15");
+        break;
+    default:
+        return;
+    }
+
+    addWriteRequestToQueue(request_queue,DG_ID,DG,-1,args);
 }
 
 void MKSSerialClass::manageErrorReply()
