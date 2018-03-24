@@ -1,43 +1,16 @@
 #ifndef EUROTHERMSERIALCLASS_H
 #define EUROTHERMSERIALCLASS_H
 
-#include <QVariant>
-#include <QBitArray>
-#include <QByteArray>
-#include <QSerialPort>
-#include <QModbusReply>
-#include <QModbusClient>
-#include <QModbusDataUnit>
-#include <QModbusRtuSerialMaster>
-
 #include "baseserialclass.h"
 
 class EurothermSerialClass : public BaseSerialClass
 {
     Q_OBJECT
-private:
-    QModbusRtuSerialMaster *modbus_client;
-    QModbusReply *reply;
-
 public:
     enum ControlAction {
         ReverseActing,
         DirectActing
     };
-
-    /*enum BaudRate {
-        Baud9600        = 0,
-        Baud19200       = 1,
-        Baud4800        = 2,
-        Baud2400        = 3,
-        Baud1200        = 4
-    };
-
-    enum Parity {
-        NoParity        = 0,
-        EvenParity      = 1,
-        OddParity       = 2
-    };*/
 
     enum Alarm {
         Alarm1,
@@ -61,9 +34,6 @@ public:
 public:
     explicit EurothermSerialClass(QObject *parent = 0);
     ~EurothermSerialClass();
-
-    bool deviceConnected() const;
-    bool deviceDisconnected() const;
 
 public slots:
     void requestReadPVInputValue(const int server_address);
@@ -120,10 +90,6 @@ public slots:
     void processRequestQueue();
     void manageReply();
 
-    void connectDevice();
-    void disconnectDevice();
-
-    bool checkState();
     bool processPending() const;
 
 signals:

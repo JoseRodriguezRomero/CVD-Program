@@ -13,6 +13,9 @@ class BaseSerialClass : public QObject
 protected:
     QVector<void*> request_queue;  // QObjects do not support templating....
 
+    QSerialPort *serial_port;
+    QByteArray buffer;
+
     QString port_name;
     QSerialPort::BaudRate baud_rate;
     QSerialPort::Parity port_parity;
@@ -29,8 +32,8 @@ public:
     void setEventTimeInterval(const uint interval);             // in msec
     void setReconnectTimeInterval(const uint interval);         // in msec
 
-    virtual bool deviceConnected() const = 0;
-    virtual bool deviceDisconnected() const = 0;
+    virtual bool deviceConnected() const;
+    virtual bool deviceDisconnected() const;
 
 public slots:
     QString serialPortName() const;
@@ -52,10 +55,10 @@ public slots:
     virtual void manageReply() = 0;
     virtual void processRequestQueue() = 0;
 
-    virtual void connectDevice() = 0;
-    virtual void disconnectDevice() = 0;
+    virtual void connectDevice();
+    virtual void disconnectDevice();
 
-    virtual bool checkState() = 0;
+    virtual bool checkState();
     void clearRequestQueue();
 
     void startEventLoop();
@@ -68,6 +71,8 @@ signals:
 
     void stopReconnectTimer();
     void startReconnectTimer();
+
+    void deviceConnected(const QSerialPort::SerialPortError error);
 
 private slots:
     void eventLoop();

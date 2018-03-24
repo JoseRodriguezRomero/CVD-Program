@@ -8,10 +8,6 @@
 class PfeifferSerialclass : public BaseSerialClass
 {
     Q_OBJECT
-private:
-    QSerialPort *serial_port;
-    QByteArray buffer;
-
 public:
     enum SensorStatus {
         On,
@@ -88,9 +84,6 @@ public:
     PfeifferSerialclass(QObject *parent = nullptr);
     ~PfeifferSerialclass();
 
-    bool deviceConnected() const;
-    bool deviceDisconnected() const;
-
 signals:
     void deviceConnected(QSerialPort::SerialPortError);
 
@@ -152,12 +145,7 @@ public slots:
             const PfeifferSerialclass::Sensor sensor,
             const float lower_threshold, const float upper_threshold);
 
-    bool checkState();
     void manageReply();
-
-    void connectDevice();
-    void disconnectDevice();
-
     bool processPending() const;
 
 private:

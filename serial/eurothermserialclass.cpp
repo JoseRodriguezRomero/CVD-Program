@@ -12,7 +12,7 @@
 #define EUROTHERM_DEFAULT_FLOW_CONTROL      QSerialPort::NoFlowControl
 
 #define IEEE_REGION             0x8000
-#define CRC_16_ANSI_POLY        0x18005
+#define CRC_16_ANSI_POLY        0x8005
 
 #define POW_2_8                 256
 #define POW_2_16                65536
@@ -222,8 +222,8 @@
 
 /* Modbus Adressess for Eurotherm 32xx series */
 
-unsigned int  crc_lookup_table[POW_2_16];           // 2^16 combinations...
-unsigned char byte_mirror_lookup_table[POW_2_8];    // 2^8  combinations...
+unsigned int  crc_lookup_table[POW_2_8];            // 2^8 combinations...
+unsigned char byte_mirror_lookup_table[POW_2_8];    // 2^8 combinations...
 
 enum RegisterType {
     Coil,
@@ -238,17 +238,16 @@ enum RequestType {
 };
 
 struct EurothermRequestStruct {
-    quint16 server_address;
-    quint16 start_address;
+    unsigned char server_address;
+    unsigned short start_address;
     RegisterType reg_type;
     RequestType req_type;
-    QVector<quint16> values;
+    QVector<unsigned char> values;
     bool pending;
 };
 
 struct EurotherReplyStruct {
     unsigned char server_address;
-    unsigned int start_address;
     RegisterType reg_type;
     RequestType req_type;
     bool valid_reply;
@@ -266,28 +265,24 @@ struct EurotherReplyStruct {
 
 void computeCRC16LookupTable()
 {
-    const unsigned int generator = CRC_16_ANSI_POLY;
-    unsigned int crc,aux_gen,mask;
+    const unsigned short generator = CRC_16_ANSI_POLY;
+    unsigned short crc;
 
-    for (int i = 0; i < POW_2_16; i++)
+    for (int i = 0; i < POW_2_8; i++)
     {
         crc = i;
-        crc <<= 16;
-        mask = 1;
-        mask <<= 31;
-
-        aux_gen = generator;
-        aux_gen <<= 15;
 
         for (int i = 0; i < 16; i++)
         {
-            if (mask & crc)
+            if (crc & 0x8000)
             {
-                crc ^= aux_gen;
+                crc <<= 1;
+                crc ^= generator;
             }
-
-            mask >>= 1;
-            aux_gen >>= 1;
+            else
+            {
+                crc <<= 1;
+            }
         }
 
         crc_lookup_table[i] = crc;
@@ -324,32 +319,16 @@ void mirrorByteArray(QVector<unsigned char> &data)
     }
 }
 
-unsigned int modbus16BitCRC(QVector<unsigned char> data)
+unsigned short modbus16BitCRC(QVector<unsigned char> data)
 {
+    unsigned short computed_crc = 0xFFFF;
+    unsigned int aux;
     mirrorByteArray(data);
 
-    unsigned int computed_crc;
-    unsigned int aux;
-
-    if (data.length() & 1)
+    for (int i = 0; i < data.length(); i++)
     {
-        computed_crc = 0x00FF;
-        data.insert(0,0xFF);
-    }
-    else
-    {
-        computed_crc = 0xFFFF;
-    }
-
-    int len = (data.length() >> 1);
-
-    for (int i = 0; i < len; i++)
-    {
-        aux = data.at(i*2) << 8;
-        aux |= data.at(i*2 + 1);
-
-        computed_crc ^= aux;
-        computed_crc = crc_lookup_table[computed_crc];
+        aux = (computed_crc >> 8) ^ data.at(i);
+        computed_crc = (computed_crc << 8)^(crc_lookup_table[aux]);
     }
 
     unsigned char r_bits = ((computed_crc & 0xFF00) >> 8);
@@ -422,38 +401,19 @@ QByteArray generateModbusRequestString(const EurothermRequestStruct &request)
     buffer.append(l_address);
     buffer.append(r_address);
 
-    int len = request.values.length();
-
     if ((request.reg_type == HoldingRegister) ||
             request.reg_type == InputRegister)
     {
         int i = 0;
-
-        while ((1 << (i*16)) < len)
-        {
-            i++;
-        }
-        i <<= 1;
-
-        while (i > 0)
-        {
-            unsigned char aux_cast;
-            aux_cast = ((0xFFFF << (i-1)*8) & len);
-            buffer.append(aux_cast);
-            i--;
-        }
+        int len = request.values.length() >> 1;
+        buffer.append(0x00);
+        buffer.append(len);
     }
 
     if (request.req_type == WriteRequest)
     {
-        unsigned char aux1, aux2;
-        for (int i = 0; i < len; i++)
-        {
-            aux1 = ((request.values.at(i) & 0xFF00) >> 8);
-            aux2 =  (request.values.at(i) & 0x00FF);
-            buffer.append(static_cast<unsigned char>(aux1));
-            buffer.append(static_cast<unsigned char>(aux2));
-        }
+        buffer.append(request.values.length());
+        buffer.append(request.values);
     }
 
     unsigned int crc = modbus16BitCRC(buffer);
@@ -483,24 +443,29 @@ QByteArray generateModbusRequestString(const EurothermRequestStruct &request)
 void castByteArrayToFloatArray(const QByteArray data,
                                EurotherReplyStruct &reply_struct)
 {
-    if (data.length() & 0x3)
+    if (data.length() & 0x3 || (!(data.length())))
     {
         return;
     }
 
-    int len = data.length() / 4;
-    unsigned long buff;
-    unsigned long *aux_ptr1 = &buff;
-    float *aux_ptr2 = reinterpret_cast<float*>(aux_ptr1);
+    reply_struct.float_cast.clear();
+    int len = (data.length() >> 2);
 
     for (int i = 0; i < len; i++)
     {
-        buff = 0;
-        for (int j = 0; j < 4; j++)
+        long bin_data = data.at(i*4);
+
+        for (int j = 1; j < 4; j++)
         {
-            buff = ((buff << 8) | data.at(i*4 + j));
+            bin_data <<= 8;
+            bin_data |= (0xFF & data.at(i*4+j));
         }
-        reply_struct.float_cast.append(*aux_ptr2);
+
+        long *aux_ptr1 = &bin_data;
+        float *aux_ptr2 = reinterpret_cast<float*>(aux_ptr1);
+        float cast_value = *aux_ptr2;
+
+        reply_struct.float_cast.append(cast_value);
     }
 }
 
@@ -516,19 +481,59 @@ void castByteArrayTo8BitArray(const QByteArray data,
 void castByteArrayTo16BitArray(const QByteArray data,
                                EurotherReplyStruct &reply_struct)
 {
+    if (data.length() & 1)
+    {
+        return;
+    }
 
+    int len = (data.length() >> 1);
+    short double_byte;
+
+    for (int i = 0; i < len; i++)
+    {
+        double_byte = data.at(i*2);
+        double_byte = ((double_byte << 8) | (data.at(i*2+1)));
+        reply_struct.cast_16bit.append(double_byte);
+    }
 }
 
 void castByteArrayToUnsigned8BitArray(const QByteArray data,
                                       EurotherReplyStruct &reply_struct)
 {
+    char byte;
+    char *aux_ptr1 = &byte;
+    unsigned char *aux_ptr2 = reinterpret_cast<unsigned char*>(aux_ptr1);
 
+    for (int i = 0; i < data.length(); i++)
+    {
+        byte = data.at(i);
+        reply_struct.cast_u8bit.append(*aux_ptr2);
+    }
 }
 
 void castByteArrayToUnsigned16BitArray(const QByteArray data,
                                        EurotherReplyStruct &reply_struct)
 {
+    short double_byte;
+    short *aux_ptr1 = &double_byte;
+    unsigned short *aux_ptr2 = reinterpret_cast<unsigned short*>(aux_ptr1);
 
+    if (data.length() & 1)
+    {
+        return;
+    }
+
+    for (int i = 0; i < data.length(); i++)
+    {
+        double_byte = data.at(i*2);
+        double_byte = ((double_byte << 8) | (data.at(i*2+1)));
+        reply_struct.cast_u8bit.append(*aux_ptr2);
+    }
+}
+
+void castByteArrayToBoolArray(const QByteArray data,
+                             EurotherReplyStruct &reply_struct)
+{
 }
 
 EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
@@ -542,6 +547,7 @@ EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
         return ret;
     }
 
+    ret.server_address = byte_array.at(0);
     QVector<unsigned char> data;
 
     char *aux_ptr1;
@@ -563,18 +569,16 @@ EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
     aux_ptr2 = reinterpret_cast<unsigned char*>(aux_ptr1);
 
     byte = byte_array.at(byte_array.length()-1);
-    unsigned int obtained_crc = ((*aux_ptr2) << 8);
+    unsigned short obtained_crc = *aux_ptr2;
     byte = byte_array.at(byte_array.length()-2);
-    obtained_crc |= (*aux_ptr2);
+    obtained_crc <<= 8;
+    obtained_crc |= *aux_ptr2;
 
     if (obtained_crc != computed_crc)
     {
         ret.valid_reply = false;
         return ret;
     }
-
-    byte = byte_array.at(0);
-    ret.start_address = *aux_ptr2;
 
     byte = byte_array.at(1);
     switch (byte) {
@@ -607,31 +611,24 @@ EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
         return ret;
     }
 
-    byte = byte_array.at(2);
-    ret.start_address = *aux_ptr2;
-    byte = byte_array.at(3);
-    ret.start_address = ((ret.start_address) << 8) | (*aux_ptr2);
-
     if ((ret.reg_type == HoldingRegister) || (ret.reg_type == InputRegister))
     {
-        unsigned char data_len = byte_array.at(4);
-        data_len = ((data_len << 8) | (byte_array.at(5)));
+        QByteArray data_array = byte_array;
+        data_array.remove(data_array.length()-2,2);
+        data_array.remove(0,3);
 
-        if (data_len != (byte_array.length() - 8))
+        if (data_array.length() != byte_array.at(2))
         {
             ret.valid_reply = false;
             return ret;
         }
-
-        QByteArray data_array = byte_array;
-        data_array.remove(data_array.length()-2,2);
-        data_array.remove(0,6);
 
         castByteArrayToFloatArray(data_array,ret);
         castByteArrayTo8BitArray(data_array,ret);
         castByteArrayTo16BitArray(data_array,ret);
         castByteArrayToUnsigned8BitArray(data_array,ret);
         castByteArrayToUnsigned16BitArray(data_array,ret);
+        castByteArrayToBoolArray(data_array,ret);
     }
     else
     {
@@ -643,11 +640,11 @@ EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
 }
 
 void add16BitRequestToQueue(QVector<void*> &request_queue,
-                            const quint16 server_address,
-                            const quint16 start_address,
+                            const unsigned char server_address,
+                            const unsigned short start_address,
                             const RegisterType reg_type,
                             const RequestType req_type,
-                            const quint16 value = 0)
+                            const unsigned short value = 0)
 {
     while (request_queue.length() > MAX_QUEUE_LEN)
     {
@@ -661,7 +658,8 @@ void add16BitRequestToQueue(QVector<void*> &request_queue,
     new_request->reg_type = reg_type;
     new_request->req_type = req_type;
     new_request->values.clear();
-    new_request->values.append(value);
+    new_request->values.append(value & 0xFF);
+    new_request->values.append((value & 0xFF00) >> 8);
     new_request->pending = false;
 
     request_queue.append(new_request);
@@ -702,8 +700,8 @@ void addBoolRequestToQueue(QVector<void*> &request_queue,
 }
 
 void addFloatRequestToQueue(QVector<void*> &request_queue,
-                            const quint16 server_address,
-                            const quint16 start_address,
+                            const unsigned char server_address,
+                            const unsigned short start_address,
                             const RegisterType reg_type,
                             const RequestType req_type,
                             const float value = 0)
@@ -714,21 +712,26 @@ void addFloatRequestToQueue(QVector<void*> &request_queue,
         request_queue.removeAt(0);
     }
 
-    float const* value_ptr = &value;
-    quint32 const* cast_val_ptr = reinterpret_cast<quint32 const*>(value_ptr);
-    quint32 cast_val = *cast_val_ptr;
-
-    quint16 cast_val_low = static_cast<quint16>(cast_val & 0xFFFF);
-    cast_val = cast_val & 0xFFFF0000;
-    quint16 cast_val_high = static_cast<quint16>(cast_val >> 16);
-
     EurothermRequestStruct *new_request = new EurothermRequestStruct;
+
+    float const* value_ptr = &value;
+    unsigned long const *cast_val_ptr = reinterpret_cast<unsigned long const*>(
+                value_ptr);
+    unsigned long cast_val = *cast_val_ptr;
+
+    for (int i = 0; i < 4; i++)
+    {
+        unsigned long mask = 0xFF;
+        mask <<= 8*(3-i);
+
+        unsigned char aux_val = ((cast_val & mask) >> 8*(3-i));
+        new_request->values.append(aux_val);
+    }
+
     new_request->server_address = server_address;
     new_request->start_address = (start_address << 1) | IEEE_REGION;
     new_request->reg_type = reg_type;
     new_request->req_type = req_type;
-    new_request->values.append(cast_val_high);
-    new_request->values.append(cast_val_low);
     new_request->pending = false;
 
     request_queue.append(new_request);
@@ -751,160 +754,22 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     event_timer.setParent(this);
 
     reconnect_timer.setInterval(1000);
-    event_timer.setInterval(30);
+    event_timer.setInterval(20);
 
-    modbus_client = nullptr;  // never forgetti mom's spaghetti
-    reply = nullptr;
+    serial_port = nullptr;  // never forgetti mom's spaghetti
+    buffer.clear();
 }
 
 EurothermSerialClass::~EurothermSerialClass()
 {
-    if (modbus_client != nullptr)
+    if (serial_port != nullptr)
     {
-        modbus_client->disconnectDevice();
-        modbus_client->deleteLater();
+        while (serial_port->isOpen()) {
+            serial_port->close();
+        }
+
+        serial_port->deleteLater();
     }
-}
-
-bool EurothermSerialClass::deviceConnected() const
-{
-    if (modbus_client == nullptr)
-    {
-        return false;
-    }
-
-    if (modbus_client->state() == QModbusDevice::UnconnectedState)
-    {
-        return false;
-    }
-
-    return true;
-}
-
-bool EurothermSerialClass::deviceDisconnected() const
-{
-    return !deviceConnected();
-}
-
-void EurothermSerialClass::connectDevice()
-{
-    if (modbus_client == nullptr)
-    {
-        modbus_client = new QModbusRtuSerialMaster(this);
-        modbus_client->setTimeout(200);
-        modbus_client->setNumberOfRetries(3);
-    }
-    else if (modbus_client->state() == QModbusDevice::ConnectedState ||
-             modbus_client->state() == QModbusDevice::ConnectingState)
-    {
-        return;
-    }
-
-    modbus_client->setConnectionParameter(
-                QModbusDevice::SerialPortNameParameter,port_name);
-    modbus_client->setConnectionParameter(
-                QModbusDevice::SerialBaudRateParameter,baud_rate);
-    modbus_client->setConnectionParameter(
-                QModbusDevice::SerialParityParameter,port_parity);
-    modbus_client->setConnectionParameter(
-                QModbusDevice::SerialStopBitsParameter,stop_bits);
-    modbus_client->setConnectionParameter(
-                QModbusDevice::SerialDataBitsParameter,data_bits);
-
-    modbus_client->connectDevice();
-    while (modbus_client->state() == QModbusDevice::ConnectingState)
-    {
-    }
-
-    if (modbus_client->state() == QModbusDevice::ConnectedState)
-    {
-        emit stopReconnectTimer();
-        emit startEventLoopTimer();
-    }
-    else
-    {
-        modbus_client->deleteLater();
-        modbus_client = nullptr;
-        emit stopEventLoopTimer();
-        emit startReconnectTimer();
-    }
-}
-
-void EurothermSerialClass::disconnectDevice()
-{
-    if (modbus_client == nullptr)
-    {
-        return;
-    }
-
-    modbus_client->disconnectDevice();
-    modbus_client->deleteLater();
-
-    emit stopEventLoopTimer();
-    emit stopReconnectTimer();
-
-    modbus_client = nullptr;
-    reply = nullptr;
-}
-
-bool EurothermSerialClass::checkState()
-{
-    QString reply_string;
-    bool status = false;
-
-    if (modbus_client == nullptr)
-    {
-        emit errorString("Eurotherm: CONNECTION ERROR",false);
-        return false;
-    }
-
-    QModbusDevice::Error client_error = modbus_client->error();
-
-    switch (client_error) {
-    case QModbusDevice::NoError :
-        reply_string = "CONNECTED";
-        status = true;
-        break;
-    case QModbusDevice::ReadError :
-        reply_string = "READ ERROR";
-        break;
-    case QModbusDevice::WriteError :
-        reply_string = "WRITE ERROR";
-        break;
-    case QModbusDevice::ConnectionError :
-        reply_string = "CONNECTION ERROR";
-        break;
-    case QModbusDevice::ConfigurationError :
-        reply_string = "CONFIGURATION ERROR";
-        break;
-    case QModbusDevice::TimeoutError :
-        reply_string = "TIMEOUT ERROR";
-        break;
-    case QModbusDevice::ProtocolError :
-        reply_string = "PROTOCOL ERROR";
-        break;
-    case QModbusDevice::ReplyAbortedError :
-        reply_string = "REPLY ABORTED ERROR";
-        break;
-    default :
-        reply_string = "UNKNOWN ERROR";
-        break;
-    }
-
-    if (!status)
-    {
-        emit errorString("Eurotherm: " + reply_string,status);
-        return false;
-    }
-
-    if (modbus_client->state() != QModbusDevice::ConnectedState)
-    {
-        emit errorString("Eurotherm: CONNECTION ERROR",false);
-        return false;
-    }
-
-    emit errorString("Eurotherm: " + reply_string,true);
-    return status;
 }
 
 bool EurothermSerialClass::processPending() const
@@ -1154,6 +1019,9 @@ void EurothermSerialClass::requestWriteTargetSetpoint(
 {
     addFloatRequestToQueue(request_queue,server_address,TG_SP,HoldingRegister,
                            WriteRequest,setpoint);
+
+    EurothermRequestStruct *request = static_cast<EurothermRequestStruct*>(
+                request_queue.last());
 }
 
 void EurothermSerialClass::requestWriteProportionalBand(
@@ -1372,94 +1240,52 @@ void EurothermSerialClass::manageReply()
     EurothermRequestStruct *request =static_cast<EurothermRequestStruct*>(
                 request_queue.first());
 
-    if (reply == nullptr || modbus_client == nullptr)
+    if (serial_port->bytesAvailable() < 1)
     {
-        request->pending = false;
         return;
     }
 
-    if (!(reply->isFinished()))
-    {
-        request->pending = true;
-        return;
-    }
+    buffer.append(serial_port->readAll());
+    EurotherReplyStruct reply = parseModebusReplyString(buffer);
 
-    if (reply->error() != QModbusDevice::NoError)
+    if (!reply.valid_reply)
     {
-        request->pending = false;
-        reply->deleteLater();
-        reply = nullptr;
         failed_attempts++;
         return;
     }
 
-    QModbusDataUnit data_unit = reply->result();
-    int server_address = reply->serverAddress();
-
-    if (!data_unit.isValid())
-    {
-        reply->deleteLater();
-        reply = nullptr;
-        request->pending = false;
-        failed_attempts++;
-        return;
-    }
-
-    quint8  value_uint8  = reply->result().value(0);
-    quint16 value_uint16 = reply->result().value(0);
-
-    quint32 value_uint32 = 0;
-    int value_count = reply->result().valueCount();
-
-    for (int i = 0; i < value_count; i++)
-    {
-        quint16 aux = reply->result().value(i);
-        value_uint32 <<= 16;
-        value_uint32 = value_uint32 | aux;
-    }
-
-    quint16 const* value_uint16_ptr = &value_uint16;
-    qint16 const* value_int16_ptr = reinterpret_cast<qint16 const*>(
-                value_uint16_ptr);
-    qint8 value_int16 = *value_int16_ptr;
-
-    quint32 const *value_uint32_ptr = &value_uint32;
-    float const* value_float32_ptr = reinterpret_cast<float const*>(
-                value_uint32_ptr);
-    float value_float32 = *value_float32_ptr;
-
-    int start_address = data_unit.startAddress();
+    int start_address = request->start_address;
+    int server_address = reply.server_address;
 
     if (start_address & IEEE_REGION)
     {
-        start_address -= IEEE_REGION;
+        start_address &= (~IEEE_REGION);
         start_address >>= 1;
     }
 
     switch (start_address)
     {
     case PV_IN:
-        emit PVInputValue(server_address, value_float32);
+        emit PVInputValue(server_address, reply.float_cast.first());
         break;
     case TG_SP:
-        emit targetSetpoint(server_address,value_float32);
+        emit targetSetpoint(server_address,reply.float_cast.first());
         break;
     case MAN_OP:
-        emit manualOutputValue(server_address, value_float32);
+        emit manualOutputValue(server_address, reply.float_cast.first());
         break;
     case WRK_OP:
-        emit workingOutput(server_address, value_float32);
+        emit workingOutput(server_address, reply.float_cast.first());
         break;
     case WRK_SP:
-        emit workingSetpoint(server_address, value_float32);
+        emit workingSetpoint(server_address, reply.float_cast.first());
         break;
     case PB:
-        emit proportionalBand(server_address, value_float32);
+        emit proportionalBand(server_address, reply.float_cast.first());
         break;
     case CTRL_A:
         ControlAction control_action;
-
-        switch (value_uint8) {
+        switch (reply.cast_u8bit.first()) {
         case 0:
             control_action = ReverseActing;
             break;
@@ -1469,30 +1295,29 @@ void EurothermSerialClass::manageReply()
         default:
             return;
         }
-
         emit controlAction(server_address,control_action);
         break;
     case TI:
-        emit integralTime(server_address, value_float32);
+        emit integralTime(server_address, reply.float_cast.first());
         break;
     case TD:
-        emit derivativeTime(server_address, value_float32);
+        emit derivativeTime(server_address, reply.float_cast.first());
         break;
     case RNG_LO:
-        emit inputRangeLowLimit(server_address, value_float32);
+        emit inputRangeLowLimit(server_address, reply.float_cast.first());
         break;
     case RNG_HI:
-        emit inputRangeLowLimit(server_address, value_float32);
+        emit inputRangeLowLimit(server_address, reply.float_cast.first());
         break;
     case A1:
-        emit alarmThreshold(server_address, 1, value_float32);
+        emit alarmThreshold(server_address, 1, reply.float_cast.first());
         break;
     case A2:
-        emit alarmThreshold(server_address, 2, value_float32);
+        emit alarmThreshold(server_address, 2, reply.float_cast.first());
         break;
     case SP_SEL:
         Setpoint setpoint;
-        switch (value_uint8) {
+        switch (reply.cast_u8bit.first()) {
         case 0:
             setpoint = Setpoint1;
             break;
@@ -1505,20 +1330,20 @@ void EurothermSerialClass::manageReply()
         emit activeSetpoint(server_address, setpoint);
         break;
     case D_BAND:
-        emit channel2Deadband(server_address, value_float32);
+        emit channel2Deadband(server_address, reply.float_cast.first());
         break;
     case CB_LO:
-        emit cutbackLow(server_address, value_float32);
+        emit cutbackLow(server_address, reply.float_cast.first());
         break;
     case CB_HI:
-        emit cutbackHigh(server_address, value_float32);
+        emit cutbackHigh(server_address, reply.float_cast.first());
         break;
     case R2G:
-        emit relativeCoolCh2Gain(server_address, value_float32);
+        emit relativeCoolCh2Gain(server_address, reply.float_cast.first());
         break;
     case T_STAT:
         TimerStatus status;
-        switch (value_uint8) {
+        switch (reply.cast_u8bit.first()) {
         case 0:
             status = Reset;
             break;
@@ -1537,31 +1362,34 @@ void EurothermSerialClass::manageReply()
         emit currentTimerStatus(server_address, status);
         break;
     case SP1:
-        emit currentSetpointValue(server_address, Setpoint1, value_float32);
+        emit currentSetpointValue(server_address, Setpoint1,
+                                  reply.float_cast.first());
         break;
     case SP2:
-        emit currentSetpointValue(server_address, Setpoint2, value_float32);
+        emit currentSetpointValue(server_address, Setpoint2,
+                                  reply.float_cast.first());
         break;
     case RM_SP:
-        emit remoteSetpoint(server_address, value_float32);
+        emit remoteSetpoint(server_address, reply.float_cast.first());
         break;
     case LOC_T:
-        emit localTrim(server_address, value_float32);
+        emit localTrim(server_address, reply.float_cast.first());
         break;
     case MR:
-        emit manualReset(server_address, value_float32);
+        emit manualReset(server_address, reply.float_cast.first());
         break;
     case OP_HI:
-        emit outputHighLimit(server_address, value_float32);
+        emit outputHighLimit(server_address, reply.float_cast.first());
         break;
     case OP_LO:
-        emit outputLowLimit(server_address, value_float32);
+        emit outputLowLimit(server_address, reply.float_cast.first());
         break;
     case SAFE:
-        emit safeOutputValueforSensorBreak(server_address, value_float32);
+        emit safeOutputValueforSensorBreak(server_address,
+                                           reply.float_cast.first());
         break;
     case SP_RAT:
-        emit setpointRateLimitValue(server_address, value_float32);
+        emit setpointRateLimitValue(server_address, reply.float_cast.first());
         break;
     case P_ERR:
         break;
@@ -1576,7 +1404,7 @@ void EurothermSerialClass::manageReply()
     case STAT:
         for (int i = 0; i < 4; i++)
         {
-            if (value_int16 & (1 << i))
+            if (reply.cast_u16bit.first() & (1 << i))
             {
                 emit alarmStatus(server_address, i, true);
             }
@@ -1603,7 +1431,7 @@ void EurothermSerialClass::manageReply()
 
         for (int i = 4; i < 16; i++)
         {
-            if (value_int16 & (1 << i))
+            if (reply.cast_u16bit.first() & (1 << i))
             {
                 emit (*this.*foo[i-4])(server_address, true);
             }
@@ -1919,8 +1747,6 @@ void EurothermSerialClass::manageReply()
         break;
     }
 
-    reply->deleteLater();
-    reply = nullptr;
     delete request;
     request_queue.remove(0);
 
@@ -1937,44 +1763,11 @@ void EurothermSerialClass::processRequestQueue()
 {
     EurothermRequestStruct *request =
             static_cast<EurothermRequestStruct*>(request_queue[0]);
-    QModbusDataUnit::RegisterType reg_type;
-    int start_address = request->start_address;
-    int server_address = request->server_address;
 
+    QByteArray request_byte_array = generateModbusRequestString(*request);
+
+    serial_port->flush();
+    serial_port->write(request_byte_array);
     request->pending = true;
-
-    switch (request->reg_type) {
-    case Coil:
-        reg_type = QModbusDataUnit::Coils;
-        break;
-    case DiscreteInput:
-        reg_type = QModbusDataUnit::DiscreteInputs;
-        break;
-    case HoldingRegister:
-        reg_type = QModbusDataUnit::HoldingRegisters;
-        break;
-    case InputRegister:
-        reg_type = QModbusDataUnit::InputRegisters;
-        break;
-    default:
-        return;
-    }
-
-    QModbusDataUnit data_unit;
-    data_unit.setRegisterType(reg_type);
-    data_unit.setStartAddress(start_address);
-    data_unit.setValueCount(request->values.length());
-
-    generateModbusRequestString(*request);
-
-    switch (request->req_type)
-    {
-    case ReadRequest:
-        reply = modbus_client->sendReadRequest(data_unit,server_address);
-        break;
-    case WriteRequest:
-        data_unit.setValues(request->values);
-        reply = modbus_client->sendWriteRequest(data_unit,server_address);
-        break;
-    }
+    buffer.clear();
 }

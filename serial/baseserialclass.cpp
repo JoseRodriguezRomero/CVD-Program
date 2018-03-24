@@ -14,6 +14,24 @@ void BaseSerialClass::setReconnectTimeInterval(const uint interval)
     reconnect_timer.setInterval(interval);
 }
 
+bool BaseSerialClass::deviceConnected() const
+{
+    if (serial_port == nullptr)
+    {
+        return false;
+    }
+
+    QSerialPort::SerialPortError error = serial_port->error();
+
+    if ((error == QSerialPort::NotOpenError) ||
+            (error == QSerialPort::OpenError))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 QString BaseSerialClass::serialPortName() const
 {
     return port_name;
@@ -73,6 +91,112 @@ void BaseSerialClass::setFlowControl(
         const QSerialPort::FlowControl flow_control)
 {
     this->flow_control = flow_control;
+}
+
+void BaseSerialClass::connectDevice()
+{
+    if (serial_port == nullptr)
+    {
+        serial_port = new QSerialPort(this);
+    }
+    else if (serial_port->isOpen())
+    {
+        return;
+    }
+
+    serial_port->setPortName(port_name);
+    serial_port->setBaudRate(baud_rate);
+    serial_port->setFlowControl(flow_control);
+    serial_port->setStopBits(stop_bits);
+    serial_port->setDataBits(data_bits);
+    serial_port->setParity(port_parity);
+    serial_port->open(QIODevice::ReadWrite);
+
+    if (serial_port->error() == QSerialPort::NoError)
+    {
+        emit deviceConnected(serial_port->error());
+        serial_port->flush();
+
+        emit startEventLoopTimer();
+        emit stopReconnectTimer();
+    }
+    else
+    {
+        serial_port->close();
+        serial_port->deleteLater();
+        serial_port = nullptr;
+        emit deviceConnected(QSerialPort::NotOpenError);
+
+        emit stopEventLoopTimer();
+        emit startReconnectTimer();
+    }
+}
+
+void BaseSerialClass::disconnectDevice()
+{
+    if (serial_port == nullptr)
+    {
+        return;
+    }
+
+    emit stopReconnectTimer();
+    emit stopEventLoopTimer();
+
+    serial_port->close();
+    serial_port->deleteLater();
+    serial_port = nullptr;
+}
+
+bool BaseSerialClass::checkState()
+{
+    QString reply_string;
+    bool status = false;
+
+    if (serial_port == nullptr)
+    {
+        emit deviceConnected(QSerialPort::DeviceNotFoundError);
+        return false;
+    }
+
+    switch (serial_port->error()) {
+    case QSerialPort::NoError:
+        reply_string = "CONNECTED";
+        status = true;
+        break;
+    case QSerialPort::DeviceNotFoundError:
+        reply_string = "DEVICE NOT FOUND";
+        break;
+    case QSerialPort::PermissionError:
+        reply_string = "PERMISSION ERROR";
+        break;
+    case QSerialPort::OpenError:
+        reply_string = "OPEN ERROR";
+        break;
+    case QSerialPort::NotOpenError:
+        reply_string = "NOT OPEN";
+        break;
+    case QSerialPort::WriteError:
+        reply_string = "WRITE ERROR";
+        break;
+    case QSerialPort::ReadError:
+        reply_string = "READ ERROR";
+        break;
+    case QSerialPort::ResourceError:
+        reply_string = "RESOURCE ERROR";
+        break;
+    case QSerialPort::UnsupportedOperationError:
+        reply_string = "UNSUPPORTED OPERATION";
+        break;
+    case QSerialPort::TimeoutError:
+        reply_string = "TIMEOUT ERROR";
+        break;
+    default:
+        reply_string = "UNKNOWN ERROR";
+        break;
+    }
+
+    emit deviceConnected(serial_port->error());
+    return status;
 }
 
 void BaseSerialClass::clearRequestQueue()

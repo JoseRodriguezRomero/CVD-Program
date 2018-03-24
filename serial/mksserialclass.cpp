@@ -108,8 +108,6 @@ struct MKSRequestStruct
     QVector<QString> args;
     bool write_request;
     bool pending;
-    bool enquiry;
-    bool enquirying;
 };
 
 void deleteMKSRequest(void* request_ptr)
@@ -132,8 +130,6 @@ void addReadRequestToQueue(QVector<void*> &request_queue, int mneumonic_id,
     new_request->mneumonic_id = mneumonic_id;
     new_request->mneumonic = mneumonic;
     new_request->pending = false;
-    new_request->enquiry = true;
-    new_request->enquirying = false;
     new_request->write_request = false;
     new_request->args.clear();
 
@@ -167,8 +163,6 @@ void addWriteRequestToQueue(QVector<void*> &request_queue, int mneumonic_id,
     new_request->mneumonic_id = mneumonic_id;
     new_request->mneumonic = mneumonic;
     new_request->pending = false;
-    new_request->enquiry = true;
-    new_request->enquirying = false;
     new_request->write_request = true;
     new_request->args = args;
 
@@ -224,29 +218,6 @@ MKSSerialClass::~MKSSerialClass()
     }
 }
 
-bool MKSSerialClass::deviceConnected() const
-{
-    if (serial_port == nullptr)
-    {
-        return false;
-    }
-
-    QSerialPort::SerialPortError error = serial_port->error();
-
-    if ((error == QSerialPort::NotOpenError) ||
-            (error == QSerialPort::OpenError))
-    {
-        return false;
-    }
-
-    return true;
-}
-
-bool MKSSerialClass::deviceDisconnected() const
-{
-    return !deviceConnected();
-}
-
 bool MKSSerialClass::processPending() const
 {
     MKSRequestStruct *request = static_cast<MKSRequestStruct*>(
@@ -276,7 +247,6 @@ void MKSSerialClass::manageReply()
     {
         manageErrorReply();
         buffer.clear();
-        request->enquirying = false;
         request->pending = false;
         return;
     }
@@ -387,8 +357,23 @@ void MKSSerialClass::manageReply()
     case LOCK_ID:
         break;
     default:
+        valid_reply = false;
         break;
     }
+
+    if (!valid_reply)
+    {
+        request->pending = false;
+        return;
+    }
+
+    buffer.clear();
+
+    delete request;
+    request_queue.remove(0);
+
+    request = static_cast<MKSRequestStruct*>(request_queue.first());
+    request->pending = false;
 }
 
 void MKSSerialClass::processRequestQueue()
@@ -444,116 +429,6 @@ void MKSSerialClass::processRequestQueue()
             serial_port->flush();
         }
     }
-}
-
-void MKSSerialClass::connectDevice()
-{
-    if (serial_port == nullptr)
-    {
-        serial_port = new QSerialPort(this);
-    }
-    else if (serial_port->isOpen())
-    {
-        return;
-    }
-
-    serial_port->setPortName(port_name);
-    serial_port->setBaudRate(baud_rate);
-    serial_port->setFlowControl(flow_control);
-    serial_port->setStopBits(stop_bits);
-    serial_port->setDataBits(data_bits);
-    serial_port->setParity(port_parity);
-    serial_port->open(QIODevice::ReadWrite);
-
-    if (serial_port->error() == QSerialPort::NoError)
-    {
-        emit errorString("Pfeiffer: CONNECTED", true);
-        emit deviceConnected(serial_port->error());
-        serial_port->flush();
-
-        emit startEventLoopTimer();
-        emit stopReconnectTimer();
-    }
-    else
-    {
-        serial_port->close();
-        serial_port->deleteLater();
-        serial_port = nullptr;
-        emit errorString("Pfeiffer: CONNECTION ERROR", false);
-        emit deviceConnected(QSerialPort::NotOpenError);
-
-        emit stopEventLoopTimer();
-        emit startReconnectTimer();
-    }
-}
-
-void MKSSerialClass::disconnectDevice()
-{
-    if (serial_port == nullptr)
-    {
-        return;
-    }
-
-    emit stopReconnectTimer();
-    emit stopEventLoopTimer();
-
-    serial_port->close();
-    serial_port->deleteLater();
-    serial_port = nullptr;
-}
-
-bool MKSSerialClass::checkState()
-{
-    QString reply_string;
-    bool status = false;
-
-    if (serial_port == nullptr)
-    {
-        emit errorString("Pfeiffer: CONNECTION ERROR", false);
-        return false;
-    }
-
-    switch (serial_port->error()) {
-    case QSerialPort::NoError:
-        reply_string = "CONNECTED";
-        status = true;
-        break;
-    case QSerialPort::DeviceNotFoundError:
-        reply_string = "DEVICE NOT FOUND";
-        break;
-    case QSerialPort::PermissionError:
-        reply_string = "PERMISSION ERROR";
-        break;
-    case QSerialPort::OpenError:
-        reply_string = "OPEN ERROR";
-        break;
-    case QSerialPort::NotOpenError:
-        reply_string = "NOT OPEN";
-        break;
-    case QSerialPort::WriteError:
-        reply_string = "WRITE ERROR";
-        break;
-    case QSerialPort::ReadError:
-        reply_string = "READ ERROR";
-        break;
-    case QSerialPort::ResourceError:
-        reply_string = "RESOURCE ERROR";
-        break;
-    case QSerialPort::UnsupportedOperationError:
-        reply_string = "UNSUPPORTED OPERATION";
-        break;
-    case QSerialPort::TimeoutError:
-        reply_string = "TIMEOUT ERROR";
-        break;
-    default:
-        reply_string = "UNKNOWN ERROR";
-        break;
-    }
-
-    emit errorString("Pfeiffer: " + reply_string, status);
-    emit deviceConnected(serial_port->error());
-
-    return status;
 }
 
 void MKSSerialClass::requestReadDisplayText()

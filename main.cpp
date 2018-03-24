@@ -12,6 +12,8 @@ int main(int argc, char *argv[])
     qRegisterMetaType<QSerialPort::DataBits>("QSerialPort::DataBits");
     qRegisterMetaType<QSerialPort::BaudRate>("QSerialPort::BaudRate");
 
+    qRegisterMetaType<QSerialPort::SerialPortError>("QSerialPort::SerialPortError");
+
     QApplication a(argc, argv);
     MainWindow w;
     w.initializeSerialDevices();

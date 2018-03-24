@@ -1,10 +1,11 @@
 #ifndef STATUSSTRING_H
 #define STATUSSTRING_H
 
-#include <QWidget>
-#include <QHBoxLayout>
 #include <QFrame>
 #include <QLabel>
+#include <QWidget>
+#include <QSerialPort>
+#include <QHBoxLayout>
 
 class StatusString : public QFrame
 {
@@ -22,7 +23,7 @@ public:
     QString StatusLabel() const;
 
 public slots:
-    void setStatusLabel(const QString &label, bool status);
+    void setStatusLabel(const QSerialPort::SerialPortError error);
 };
 
 #endif // STATUSSTRING_H
