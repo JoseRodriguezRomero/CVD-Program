@@ -1,14 +1,15 @@
 #include "serialsettingswindow.h"
 
 SerialSettingsWindow::SerialSettingsWindow(QWidget *parent) :
-    QMainWindow(parent)
+    QDialog(parent)
 {
-    this->setWindowModality(Qt::WindowModal);
     this->setWindowTitle("Serial Settings");
+    this->setLayout(new QVBoxLayout(this));
+    this->layout()->setContentsMargins(0,0,0,0);
 
     QWidget *central_widget = new QWidget(this);
     central_widget->setLayout(new QVBoxLayout(central_widget));
-    this->setCentralWidget(central_widget);
+    this->layout()->addWidget(central_widget);
 
     QTabWidget *tab_widget = new QTabWidget(this);
     central_widget->layout()->addWidget(tab_widget);

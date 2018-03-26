@@ -87,18 +87,21 @@ public slots:
     void requestReadDisplayDialog();
     void requestReadIDString();
     void requestReadRemoteMode();
-    void requestReadAccessChannel(const Channel channel);
-    void requestActualValue(const Channel channel);
-    void requestReadSetpoint(const Channel channel);
+    void requestReadAccessChannel(const MKSSerialClass::Channel channel);
+    void requestActualValue(const MKSSerialClass::Channel channel);
+    void requestReadSetpoint(const MKSSerialClass::Channel channel);
 
     void requestWriteDisplayText(const QString &text);
-    void requestWriteDisplayDialog(const DisplayDialog dialog);
-    void requestWriteRemoteMode(const RemoteMode mode);
-    void requestWriteAccessChannel(const Channel channel, float setpoint);
-    void requestWriteAccessChannel(const Channel channel, float setpoint,
-                                   const bool valve_open);
-    void requestWriteActualValue(const Channel channel, float setpoint);
-    void requestWriteSetpoint(const Channel channel, float setpoint);
+    void requestWriteDisplayDialog(const MKSSerialClass::DisplayDialog dialog);
+    void requestWriteRemoteMode(const MKSSerialClass::RemoteMode mode);
+    void requestWriteAccessChannel(const MKSSerialClass::Channel channel,
+                                   float setpoint);
+    void requestWriteAccessChannel(const MKSSerialClass::Channel channel,
+                                   float setpoint, const bool valve_open);
+    void requestWriteActualValue(const MKSSerialClass::Channel channel,
+                                 float setpoint);
+    void requestWriteSetpoint(const MKSSerialClass::Channel channel,
+                              float setpoint);
 
 signals:
     void errorMessage(const ErrorMessage error_message);

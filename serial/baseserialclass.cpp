@@ -114,7 +114,7 @@ void BaseSerialClass::connectDevice()
 
     if (serial_port->error() == QSerialPort::NoError)
     {
-        emit deviceConnected(serial_port->error());
+        emit deviceConnected(serial_port->error(),no_reply);
         serial_port->flush();
 
         emit startEventLoopTimer();
@@ -125,7 +125,7 @@ void BaseSerialClass::connectDevice()
         serial_port->close();
         serial_port->deleteLater();
         serial_port = nullptr;
-        emit deviceConnected(QSerialPort::NotOpenError);
+        emit deviceConnected(QSerialPort::NotOpenError,no_reply);
 
         emit stopEventLoopTimer();
         emit startReconnectTimer();
@@ -154,7 +154,7 @@ bool BaseSerialClass::checkState()
 
     if (serial_port == nullptr)
     {
-        emit deviceConnected(QSerialPort::DeviceNotFoundError);
+        emit deviceConnected(QSerialPort::DeviceNotFoundError,no_reply);
         return false;
     }
 
@@ -195,7 +195,7 @@ bool BaseSerialClass::checkState()
         break;
     }
 
-    emit deviceConnected(serial_port->error());
+    emit deviceConnected(serial_port->error(),no_reply);
     return status;
 }
 
@@ -273,6 +273,8 @@ void BaseSerialClass::eventLoop()
 
     if (failed_attempts >= MAX_FAILED_ATTEMPTS)
     {
+        no_reply = true;
+
         failed_attempts = 0;
         disconnectDevice();
 

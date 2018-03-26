@@ -6,6 +6,8 @@ int main(int argc, char *argv[])
     qRegisterMetaType<PfeifferSerialclass::Sensor>("PfeifferSerialclass::Sensor");
     qRegisterMetaType<PfeifferSerialclass::PressureMeasurementStatus>("PfeifferSerialclass::PressureMeasurementStatus");
 
+    qRegisterMetaType<MKSSerialClass::Channel>("MKSSerialClass::Channel");
+
     qRegisterMetaType<QSerialPort::Parity>("QSerialPort::Parity");
     qRegisterMetaType<QSerialPort::Parity>("QSerialPort::Parity");
     qRegisterMetaType<QSerialPort::StopBits>("QSerialPort::StopBits");

@@ -61,12 +61,12 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&recipes_page,SIGNAL(RecipeStarted(bool)),this,SLOT(onRecipeStarted(bool)));
     connect(&recipes_page,SIGNAL(RecipePaused(bool)),this,SLOT(onRecipePaused(bool)));
 
-    connect(eurotherm_serial,SIGNAL(deviceConnected(QSerialPort::SerialPortError)),
-            &eurotherm_status_string,SLOT(setStatusLabel(QSerialPort::SerialPortError)));
-    connect(pfeiffer_serial,SIGNAL(deviceConnected(QSerialPort::SerialPortError)),
-            &pfeiffer_status_string,SLOT(setStatusLabel(QSerialPort::SerialPortError)));
-    connect(mks_serial,SIGNAL(deviceConnected(QSerialPort::SerialPortError)),
-            &mks_status_string,SLOT(setStatusLabel(QSerialPort::SerialPortError)));
+    connect(eurotherm_serial,SIGNAL(deviceConnected(QSerialPort::SerialPortError,bool)),
+            &eurotherm_status_string,SLOT(setStatusLabel(QSerialPort::SerialPortError,bool)));
+    connect(pfeiffer_serial,SIGNAL(deviceConnected(QSerialPort::SerialPortError,bool)),
+            &pfeiffer_status_string,SLOT(setStatusLabel(QSerialPort::SerialPortError,bool)));
+    connect(mks_serial,SIGNAL(deviceConnected(QSerialPort::SerialPortError,bool)),
+            &mks_status_string,SLOT(setStatusLabel(QSerialPort::SerialPortError,bool)));
 
     connect(&serial_settings_window,SIGNAL(changePortName(SerialSettingsWindow::Device,QString)),
             this,SLOT(setPortName(SerialSettingsWindow::Device,QString)));
@@ -111,11 +111,18 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(setMKSPortBaudRate(QSerialPort::BaudRate)),mks_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
     connect(this,SIGNAL(setMKSPortParity(QSerialPort::Parity)),mks_serial,SLOT(setParity(QSerialPort::Parity)));
 
-    connect(this,SIGNAL(readPVInputValue(int)),eurotherm_serial,SLOT(requestReadPVInputValue(int)));
-    connect(this,SIGNAL(readTargetSetpoint(int)),eurotherm_serial,SLOT(requestReadTargetSetpoint(int)));
-    connect(this,SIGNAL(readSetpointRateLimitValue(int)),eurotherm_serial,SLOT(requestReadSetpointRateLimitValue(int)));
+    connect(this,SIGNAL(readPVInputValue(int)),
+            eurotherm_serial,SLOT(requestReadPVInputValue(int)));
+    connect(this,SIGNAL(readTargetSetpoint(int)),
+            eurotherm_serial,SLOT(requestReadTargetSetpoint(int)));
+    connect(this,SIGNAL(readSetpointRateLimitValue(int)),
+            eurotherm_serial,SLOT(requestReadSetpointRateLimitValue(int)));
 
-    connect(this,SIGNAL(readPressureAndStatus(PfeifferSerialclass::Sensor)),pfeiffer_serial,SLOT(requestReadStatusAndPressure(PfeifferSerialclass::Sensor)));
+    connect(this,SIGNAL(readPressureAndStatus(PfeifferSerialclass::Sensor)),
+            pfeiffer_serial,SLOT(requestReadStatusAndPressure(PfeifferSerialclass::Sensor)));
+
+    connect(this,SIGNAL(readMFCSetpoint(MKSSerialClass::Channel)),
+            mks_serial,SLOT(requestReadSetpoint(MKSSerialClass::Channel)));
 
     manual_control_page.setEurothermSerialClasss(eurotherm_serial);
     manual_control_page.setPfeifferSerialClass(pfeiffer_serial);
@@ -301,6 +308,7 @@ void MainWindow::openSerialSettingsWindow()
                                            devices.at(i)->dataBits());
     }
 
+    serial_settings_window.setModal(true);
     serial_settings_window.show();
 }
 
@@ -312,6 +320,10 @@ void MainWindow::eventLoop()
         emit readTargetSetpoint(i+1);
         emit readSetpointRateLimitValue(i+1);
     }
+
+    emit readMFCStatus(MKSSerialClass::Channel1);
+    emit readMFCActualValue(MKSSerialClass::Channel1);
+    emit readMFCActualValue(MKSSerialClass::Channel1);
 
     emit readPressureAndStatus(PfeifferSerialclass::Sensor6);
 }

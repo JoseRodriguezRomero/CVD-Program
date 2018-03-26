@@ -4,10 +4,10 @@
 #include <QList>
 #include <QLabel>
 #include <QWidget>
+#include <QDialog>
 #include <QComboBox>
 #include <QLineEdit>
 #include <QTabWidget>
-#include <QMainWindow>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -16,7 +16,7 @@
 #include <QSerialPort>
 #include <QSerialPortInfo>
 
-class SerialSettingsWindow : public QMainWindow
+class SerialSettingsWindow : public QDialog
 {
     Q_OBJECT
 public:

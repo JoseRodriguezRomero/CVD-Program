@@ -1,8 +1,6 @@
 #ifndef PFEIFFERSERIALCLASS_H
 #define PFEIFFERSERIALCLASS_H
 
-#include <QSerialPort>
-
 #include "baseserialclass.h"
 
 class PfeifferSerialclass : public BaseSerialClass
@@ -85,8 +83,6 @@ public:
     ~PfeifferSerialclass();
 
 signals:
-    void deviceConnected(QSerialPort::SerialPortError);
-
     void sensorStatus(const PfeifferSerialclass::Sensor sensor,
                       const PfeifferSerialclass::SensorStatus status);
     void sensorControl(const PfeifferSerialclass::Sensor sensor,

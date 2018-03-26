@@ -16,6 +16,8 @@ protected:
     QSerialPort *serial_port;
     QByteArray buffer;
 
+    bool no_reply;
+
     QString port_name;
     QSerialPort::BaudRate baud_rate;
     QSerialPort::Parity port_parity;
@@ -72,7 +74,8 @@ signals:
     void stopReconnectTimer();
     void startReconnectTimer();
 
-    void deviceConnected(const QSerialPort::SerialPortError error);
+    void deviceConnected(const QSerialPort::SerialPortError error,
+                         const bool no_reply);
 
 private slots:
     void eventLoop();

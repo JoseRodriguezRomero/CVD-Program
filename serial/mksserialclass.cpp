@@ -202,6 +202,8 @@ MKSSerialClass::MKSSerialClass(QObject *parent)
     port_parity = MKS_DEFAULT_PARITY;
     flow_control = MKS_DEFAULT_FLOW_CONTROL;
 
+    no_reply = true;
+
     failed_attempts = 0;
     serial_port = nullptr;
 }
@@ -240,6 +242,11 @@ void MKSSerialClass::manageReply()
 
     if (buffer.at(buffer.length()-1) != '\r')
     {
+        failed_attempts++;
+        if (failed_attempts >= MAX_QUEUE_LEN)
+        {
+            no_reply = true;
+        }
         return;
     }
 
@@ -367,6 +374,7 @@ void MKSSerialClass::manageReply()
         return;
     }
 
+    no_reply = false;
     buffer.clear();
 
     delete request;

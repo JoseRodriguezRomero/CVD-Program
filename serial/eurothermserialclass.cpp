@@ -750,6 +750,8 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     stop_bits = EUROTHERM_DEFAULT_STOP_BITS;
     data_bits = EUROTHERM_DEFAULT_DATA_BITS;
 
+    no_reply = true;
+
     reconnect_timer.setParent(this);
     event_timer.setParent(this);
 
@@ -1251,6 +1253,10 @@ void EurothermSerialClass::manageReply()
     if (!reply.valid_reply)
     {
         failed_attempts++;
+        if (failed_attempts >= MAX_QUEUE_LEN)
+        {
+            no_reply = true;
+        }
         return;
     }
 
@@ -1749,6 +1755,8 @@ void EurothermSerialClass::manageReply()
 
     delete request;
     request_queue.remove(0);
+
+    no_reply = false;
 
     if (!request_queue.length())
     {

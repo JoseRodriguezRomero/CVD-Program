@@ -72,6 +72,11 @@ private slots:
 
 signals:
     void readPressureAndStatus(const PfeifferSerialclass::Sensor sensor);
+
+    void readMFCStatus(const MKSSerialClass::Channel channel);
+    void readMFCActualValue(const MKSSerialClass::Channel channel);
+    void readMFCSetpoint(const MKSSerialClass::Channel channel);
+
     void readPVInputValue(const int server_address);
     void readTargetSetpoint(const int server_address);
     void readSetpointRateLimitValue(const int server_address);

@@ -245,6 +245,9 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
     port_parity = PFEIFFER_DEFAULT_PARITY;
     flow_control = PFEIFFER_DEFAULT_FLOW_CONTROL;
 
+    no_reply = false;
+    //no_reply = true;
+
     failed_attempts = 0;
 }
 
@@ -804,6 +807,11 @@ void PfeifferSerialclass::manageReply()
     if ((buffer.at(buffer.length()-2) != '\r') ||
             (buffer.at(buffer.length()-1) != '\n'))
     {
+        failed_attempts++;
+        if (failed_attempts >= MAX_QUEUE_LEN)
+        {
+            no_reply = true;
+        }
         return;
     }
 
@@ -890,13 +898,19 @@ void PfeifferSerialclass::manageReply()
                 break;
             case WDT_ID:
                 break;
+            default:
+                valid_reply = false;
+                break;
             }
 
             buffer.clear();
 
             if (valid_reply)
             {
+                qDebug() << "here";
                 delete request;
+                no_reply = false;
+
                 request_queue.remove(0);
                 if (request_queue.length() > 0)
                 {

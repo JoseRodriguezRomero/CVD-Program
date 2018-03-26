@@ -19,11 +19,13 @@ public:
 
     void setConnected();
     void setDisconnected();
+    void setNoReply();
 
     QString StatusLabel() const;
 
 public slots:
-    void setStatusLabel(const QSerialPort::SerialPortError error);
+    void setStatusLabel(const QSerialPort::SerialPortError error,
+                        const bool no_reply);
 };
 
 #endif // STATUSSTRING_H
