@@ -374,7 +374,12 @@ void MKSSerialClass::manageReply()
         return;
     }
 
-    no_reply = false;
+    if (no_reply)
+    {
+        no_reply = false;
+        emit deviceConnected(serial_port->error(),no_reply);
+    }
+
     buffer.clear();
 
     delete request;

@@ -232,7 +232,7 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
     reconnect_timer.setInterval(1000);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(10);
+    event_timer.setInterval(20);
     event_timer.setSingleShot(false);
 
     event_timer.setParent(this);
@@ -245,8 +245,7 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
     port_parity = PFEIFFER_DEFAULT_PARITY;
     flow_control = PFEIFFER_DEFAULT_FLOW_CONTROL;
 
-    no_reply = false;
-    //no_reply = true;
+    no_reply = true;
 
     failed_attempts = 0;
 }
@@ -302,7 +301,7 @@ void PfeifferSerialclass::processRequestQueue()
     {
         serial_port->write(msg);
 
-        if (serial_port->waitForBytesWritten(500))
+        if (serial_port->waitForBytesWritten())
         {
             request->pending = true;
         }
@@ -907,7 +906,6 @@ void PfeifferSerialclass::manageReply()
 
             if (valid_reply)
             {
-                qDebug() << "here";
                 delete request;
                 no_reply = false;
 

@@ -1,4 +1,4 @@
-#define MAX_FAILED_ATTEMPTS         3
+#define MAX_FAILED_ATTEMPTS         12
 
 #include <QDebug>
 
@@ -277,6 +277,8 @@ void BaseSerialClass::eventLoop()
 
         failed_attempts = 0;
         disconnectDevice();
+
+        clearRequestQueue();
 
         emit startReconnectTimer();
         emit stopEventLoopTimer();

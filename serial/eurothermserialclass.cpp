@@ -756,7 +756,7 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     event_timer.setParent(this);
 
     reconnect_timer.setInterval(1000);
-    event_timer.setInterval(20);
+    event_timer.setInterval(30);
 
     serial_port = nullptr;  // never forgetti mom's spaghetti
     buffer.clear();
@@ -1756,7 +1756,11 @@ void EurothermSerialClass::manageReply()
     delete request;
     request_queue.remove(0);
 
-    no_reply = false;
+    if (no_reply)
+    {
+        no_reply = false;
+        emit deviceConnected(serial_port->error(),no_reply);
+    }
 
     if (!request_queue.length())
     {
