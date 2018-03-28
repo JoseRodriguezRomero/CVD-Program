@@ -226,6 +226,9 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
             this,SLOT(requestSetTemperatureRamp()));
     connect(&temp_ramp_right,SIGNAL(editingFinished()),
             this,SLOT(requestSetTemperatureRamp()));
+
+    connect(&mfc_setpoint,SIGNAL(editingFinished()),
+            this,SLOT(requestSetMassFlowSetpoint()));
 }
 
 void ManualControlPage::setEurothermSerialClasss(
@@ -272,6 +275,29 @@ void ManualControlPage::setPfeifferSerialClass(
 
     connect(pfeiffer_serial,SIGNAL(sensorPressureAndStautus(PfeifferSerialclass::Sensor,PfeifferSerialclass::PressureMeasurementStatus,float)),
             this,SLOT(setPfeifferPressure(PfeifferSerialclass::Sensor,PfeifferSerialclass::PressureMeasurementStatus,float)));
+}
+
+void ManualControlPage::setMKSSerialClass(MKSSerialClass *mks_serial)
+{
+    if (this->mks_serial != nullptr)
+    {
+        disconnect(mks_serial,SIGNAL(setpoint(MKSSerialClass::Channel,float)),
+                   this,SLOT(setMassFlowSetpoint(MKSSerialClass::Channel,float)));
+        disconnect(mks_serial,SIGNAL(actualValue(MKSSerialClass::Channel,float)),
+                   this,SLOT(setMeasuredMassFlow(MKSSerialClass::Channel,float)));
+
+        disconnect(this,SIGNAL(writeMFCSetpoint(MKSSerialClass::Channel,float)),
+                   mks_serial,SLOT(requestWriteSetpoint(MKSSerialClass::Channel,float)));
+    }
+
+    connect(mks_serial,SIGNAL(setpoint(MKSSerialClass::Channel,float)),
+            this,SLOT(setMassFlowSetpoint(MKSSerialClass::Channel,float)));
+
+    connect(mks_serial,SIGNAL(actualValue(MKSSerialClass::Channel,float)),
+            this,SLOT(setMeasuredMassFlow(MKSSerialClass::Channel,float)));
+
+    connect(this,SIGNAL(writeMFCSetpoint(MKSSerialClass::Channel,float)),
+            mks_serial,SLOT(requestWriteSetpoint(MKSSerialClass::Channel,float)));
 }
 
 void ManualControlPage::setMeasuredTemperature(const int server_address,
@@ -407,6 +433,23 @@ void ManualControlPage::setPfeifferPressure(
     }
 }
 
+void ManualControlPage::setMeasuredMassFlow(
+        const MKSSerialClass::Channel channel, const float actual_value)
+{
+    mfc_flow.setText(QString::number(actual_value));
+}
+
+void ManualControlPage::setMassFlowSetpoint(
+        const MKSSerialClass::Channel channel, const float setpoint)
+{
+    if (mfc_setpoint.hasFocus())
+    {
+        return;
+    }
+
+    mfc_setpoint.setValue(setpoint);
+}
+
 void ManualControlPage::setBlockedCommands(bool block)
 {
     temp_setpoint_left.setDisabled(block);
@@ -484,4 +527,17 @@ void ManualControlPage::requestSetTemperatureRamp()
     {
         emit writeEurothermTemperatureRamp(3,temp_ramp_right.value());
     }
+}
+
+void ManualControlPage::requestSetMassFlowSetpoint()
+{
+    QDoubleSpinBox *sender_widget = static_cast<QDoubleSpinBox*>(sender());
+
+    if (!sender_widget->hasFocus())
+    {
+        return;
+    }
+
+    sender_widget->clearFocus();
+    emit writeMFCSetpoint(MKSSerialClass::Channel1,sender_widget->value());
 }

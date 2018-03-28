@@ -13,6 +13,7 @@
 
 #include "serial/eurothermserialclass.h"
 #include "serial/pfeifferserialclass.h"
+#include "serial/mksserialclass.h"
 
 class ManualControlPage : public QWidget
 {
@@ -40,17 +41,22 @@ private:
 
     EurothermSerialClass *eurotherm_serial;
     PfeifferSerialclass *pfeiffer_serial;
+    MKSSerialClass *mks_serial;
 
 public:
     explicit ManualControlPage(QWidget *parent = 0);
     void setEurothermSerialClasss(EurothermSerialClass *eurotherm_serial);
     void setPfeifferSerialClass(PfeifferSerialclass *pfeiffer_serial);
+    void setMKSSerialClass(MKSSerialClass *mks_serial);
 
 signals:
     void writeEurothermTemperatureSetpoint(const int server_address,
                                            const float setpoint);
     void writeEurothermTemperatureRamp(const int server_address,
                                        const float ramp);
+
+    void writeMFCSetpoint(const MKSSerialClass::Channel channel,
+                          const float setpoint);
 
 public slots:
     void setMeasuredTemperature(const int server_address,
@@ -65,11 +71,18 @@ public slots:
             PfeifferSerialclass::PressureMeasurementStatus status,
             const float pressure);
 
+    void setMeasuredMassFlow(const MKSSerialClass::Channel channel,
+                             const float actual_value);
+    void setMassFlowSetpoint(const MKSSerialClass::Channel channel,
+                             const float setpoint);
+
     void setBlockedCommands(bool block);
     void setUnBlockedCommands(bool unblock);
 
     void requestSetTemperatureSetpoint();
     void requestSetTemperatureRamp();
+
+    void requestSetMassFlowSetpoint();
 };
 
 #endif // MANUALCONTROLPAGE_H

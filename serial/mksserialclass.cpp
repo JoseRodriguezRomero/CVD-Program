@@ -4,7 +4,7 @@
 
 #define MAX_QUEUE_LEN   20
 
-#define MKS_DEFAULT_PORT_NAME           "COM3"
+#define MKS_DEFAULT_PORT_NAME           "COM18"
 #define MKS_DEFAULT_PARITY              QSerialPort::NoParity
 #define MKS_DEFAULT_BAUD_RATE           QSerialPort::Baud9600
 #define MKS_DEFAULT_STOP_BITS           QSerialPort::OneStop
@@ -186,10 +186,10 @@ MKSSerialClass::MKSSerialClass(QObject *parent)
 {
     this->setParent(parent);
 
-    reconnect_timer.setInterval(1000);
+    reconnect_timer.setInterval(500);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(10);
+    event_timer.setInterval(50);
     event_timer.setSingleShot(false);
 
     reconnect_timer.setParent(this);
@@ -232,6 +232,7 @@ void MKSSerialClass::manageReply()
 {
     if (serial_port->bytesAvailable() < 1)
     {
+        failed_attempts++;
         return;
     }
 
@@ -265,7 +266,11 @@ void MKSSerialClass::manageReply()
     {
         if (buffer.at(i) != ',')
         {
-            args.last().append(buffer.at(i));
+            char aux = buffer.at(i);
+            if (aux != ' ')
+            {
+                args.last().append(aux);
+            }
         }
         else
         {
@@ -274,8 +279,9 @@ void MKSSerialClass::manageReply()
     }
 
     bool valid_reply;
+    int mneumoic_id = request->mneumonic_id;
 
-    switch (request->mneumonic_id) {
+    switch (mneumoic_id) {
     case DT_ID:
         emit displayText(args.at(0));
         valid_reply = true;
@@ -290,12 +296,16 @@ void MKSSerialClass::manageReply()
         valid_reply = manageIDStringReply(args);
         break;
     case RT_ID:
+        valid_reply = manageRemoteModeReply(args);
         break;
     case AC_ID:
+        valid_reply = manageAccessChannelReply(args);
         break;
     case AV_ID:
+        valid_reply = manageActualValueReply(args);
         break;
     case SP_ID:
+        valid_reply = manageSetpointReply(args);
         break;
     case EX_ID:
         break;
@@ -380,10 +390,11 @@ void MKSSerialClass::manageReply()
         emit deviceConnected(serial_port->error(),no_reply);
     }
 
+    failed_attempts = 0;
     buffer.clear();
 
     delete request;
-    request_queue.remove(0);
+    request_queue.removeFirst();
 
     request = static_cast<MKSRequestStruct*>(request_queue.first());
     request->pending = false;
@@ -433,7 +444,7 @@ void MKSSerialClass::processRequestQueue()
     {
         serial_port->write(msg);
 
-        if (serial_port->waitForBytesWritten(500))
+        if (serial_port->waitForBytesWritten())
         {
             request->pending = true;
         }
@@ -475,7 +486,8 @@ void MKSSerialClass::requestReadAccessChannel(
     addReadRequestToQueue(request_queue,AC_ID,AC,channel);
 }
 
-void MKSSerialClass::requestActualValue(const MKSSerialClass::Channel channel)
+void MKSSerialClass::requestReadActualValue(
+        const MKSSerialClass::Channel channel)
 {
     addReadRequestToQueue(request_queue,AV_ID,AV,channel);
 }
@@ -616,6 +628,24 @@ void MKSSerialClass::requestWriteSetpoint(const MKSSerialClass::Channel channel,
     args.append(QString::number(setpoint,'f',2));
 
     addWriteRequestToQueue(request_queue,SP_ID,SP,channel,args);
+}
+
+MKSSerialClass::Channel MKSSerialClass::channelQueryed() const
+{
+    MKSRequestStruct *request = static_cast<MKSRequestStruct*>(
+                request_queue.first());
+
+    char channel_id = request->mneumonic.at(
+                request->mneumonic.length()-1).toLatin1();
+
+    switch (channel_id) {
+    case '1':
+        return Channel1;
+    case '2':
+        return Channel2;
+    }
+
+    return NoChannel;
 }
 
 bool MKSSerialClass::manageErrorReply()
@@ -785,5 +815,99 @@ bool MKSSerialClass::manageIDStringReply(const QVector<QString> &args)
     }
 
     emit IDString(version,release,serial_number);
+    return true;
+}
+
+bool MKSSerialClass::manageRemoteModeReply(const QVector<QString> &args)
+{
+    if (args.length() != 1)
+    {
+        return false;
+    }
+
+    if (args.at(0) == "ON")
+    {
+        emit remoteMode(RemoteModeOn);
+        return true;
+    }
+    else if (args.at(0) == "OFF")
+    {
+        emit remoteMode(RemoteModeOff);
+        return true;
+    }
+
+    return true;
+}
+
+bool MKSSerialClass::manageAccessChannelReply(const QVector<QString> &args)
+{
+    if (args.length() > 2 || args.length() == 0)
+    {
+        return false;
+    }
+
+    bool float_casted;
+    float float_cast = args.at(0).toFloat(&float_casted);
+
+    if (!float_casted)
+    {
+        return false;
+    }
+
+    if (args.length() == 2)
+    {
+        if (args.at(1) == "ON")
+        {
+            emit valve(channelQueryed(),true);
+        }
+        else if (args.at(1) == "OFF")
+        {
+            emit valve(channelQueryed(),false);
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    emit actualValue(channelQueryed(),float_cast);
+    return true;
+}
+
+bool MKSSerialClass::manageActualValueReply(const QVector<QString> &args)
+{
+    if (args.length() != 1)
+    {
+        return false;
+    }
+
+    bool float_casted;
+    float float_cast = args.at(0).toFloat(&float_casted);
+
+    if (!float_casted)
+    {
+        return false;
+    }
+
+    emit actualValue(channelQueryed(),float_cast);
+    return true;
+}
+
+bool MKSSerialClass::manageSetpointReply(const QVector<QString> &args)
+{
+    if (args.length() != 1)
+    {
+        return false;
+    }
+
+    bool float_casted;
+    float float_cast = args.at(0).toFloat(&float_casted);
+
+    if (!float_casted)
+    {
+        return false;
+    }
+
+    emit setpoint(channelQueryed(),float_cast);
     return true;
 }

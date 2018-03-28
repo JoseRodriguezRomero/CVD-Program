@@ -124,8 +124,14 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(readMFCSetpoint(MKSSerialClass::Channel)),
             mks_serial,SLOT(requestReadSetpoint(MKSSerialClass::Channel)));
 
+    connect(this,SIGNAL(readMFCActualValue(MKSSerialClass::Channel)),
+            mks_serial,SLOT(requestReadAccessChannel(MKSSerialClass::Channel)));
+    connect(this,SIGNAL(readMFCSetpoint(MKSSerialClass::Channel)),
+            mks_serial,SLOT(requestReadSetpoint(MKSSerialClass::Channel)));
+
     manual_control_page.setEurothermSerialClasss(eurotherm_serial);
     manual_control_page.setPfeifferSerialClass(pfeiffer_serial);
+    manual_control_page.setMKSSerialClass(mks_serial);
 
     recipes_page.setEurothermSerialClass(eurotherm_serial);
     logs_page.setEurothermSerialClass(eurotherm_serial);
@@ -137,7 +143,7 @@ MainWindow::MainWindow(QWidget *parent) :
     serial_thread.start();
     serial_thread.setPriority(QThread::HighestPriority);
 
-    global_timer.setInterval(2000);
+    global_timer.setInterval(3000);
     global_timer.setSingleShot(false);
 }
 
@@ -322,7 +328,7 @@ void MainWindow::eventLoop()
     }
 
     emit readMFCStatus(MKSSerialClass::Channel1);
-    emit readMFCActualValue(MKSSerialClass::Channel1);
+    emit readMFCSetpoint(MKSSerialClass::Channel1);
     emit readMFCActualValue(MKSSerialClass::Channel1);
 
     emit readPressureAndStatus(PfeifferSerialclass::Sensor6);

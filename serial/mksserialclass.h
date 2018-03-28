@@ -88,7 +88,7 @@ public slots:
     void requestReadIDString();
     void requestReadRemoteMode();
     void requestReadAccessChannel(const MKSSerialClass::Channel channel);
-    void requestActualValue(const MKSSerialClass::Channel channel);
+    void requestReadActualValue(const MKSSerialClass::Channel channel);
     void requestReadSetpoint(const MKSSerialClass::Channel channel);
 
     void requestWriteDisplayText(const QString &text);
@@ -107,21 +107,27 @@ signals:
     void errorMessage(const ErrorMessage error_message);
 
     void displayText(const QString text);
-    void lastKey(const Key key, const int polls);
-    void displayDialog(const DisplayDialog dialog);
+    void lastKey(const MKSSerialClass::Key key, const int polls);
+    void displayDialog(const MKSSerialClass::DisplayDialog dialog);
     void IDString(const QString version, const QString release,
                   const QString serial_number);
-    void remoteMode(const RemoteMode mode);
-    void actualValue(const Channel channel, float value);
-    void setpoint(const Channel channel, float setpoint);
-    void valve(const Channel channel, bool valve_open);
+    void remoteMode(const MKSSerialClass::RemoteMode mode);
+    void actualValue(const MKSSerialClass::Channel channel, const float value);
+    void setpoint(const MKSSerialClass::Channel channel, const float setpoint);
+    void valve(const MKSSerialClass::Channel channel, const bool valve_open);
 
 private:
+    Channel channelQueryed() const;
+
     bool manageErrorReply();
 
     bool manageRequestKeyReply(const QVector<QString> &args);
     bool manageDisplayDialogReply(const QVector<QString> &args);
     bool manageIDStringReply(const QVector<QString> &args);
+    bool manageRemoteModeReply(const QVector<QString> &args);
+    bool manageAccessChannelReply(const QVector<QString> &args);
+    bool manageActualValueReply(const QVector<QString> &args);
+    bool manageSetpointReply(const QVector<QString> &args);
 };
 
 #endif // MKSSERIALCLASS_H

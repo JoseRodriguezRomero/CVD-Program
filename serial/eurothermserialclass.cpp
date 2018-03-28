@@ -4,7 +4,7 @@
 
 #define MAX_QUEUE_LEN           20
 
-#define EUROTHERM_DEFAULT_PORT_NAME         "COM8"
+#define EUROTHERM_DEFAULT_PORT_NAME         "COM17"
 #define EUROTHERM_DEFAULT_PARITY            QSerialPort::NoParity
 #define EUROTHERM_DEFAULT_BAUD_RATE         QSerialPort::Baud19200
 #define EUROTHERM_DEFAULT_STOP_BITS         QSerialPort::OneStop
@@ -404,7 +404,6 @@ QByteArray generateModbusRequestString(const EurothermRequestStruct &request)
     if ((request.reg_type == HoldingRegister) ||
             request.reg_type == InputRegister)
     {
-        int i = 0;
         int len = request.values.length() >> 1;
         buffer.append(0x00);
         buffer.append(len);
@@ -532,8 +531,22 @@ void castByteArrayToUnsigned16BitArray(const QByteArray data,
 }
 
 void castByteArrayToBoolArray(const QByteArray data,
-                             EurotherReplyStruct &reply_struct)
+                              EurotherReplyStruct &reply_struct)
 {
+    for (int i = 0; i< data.length(); i++)
+    {
+        for (int j = 0; j < 8; j++)
+        {
+            if (data.at(i) & (8 >> j))
+            {
+                reply_struct.bool_cast.append(true);
+            }
+            else
+            {
+                reply_struct.bool_cast.append(false);
+            }
+        }
+    }
 }
 
 EurotherReplyStruct parseModebusReplyString(QByteArray &byte_array)
@@ -755,8 +768,8 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     reconnect_timer.setParent(this);
     event_timer.setParent(this);
 
-    reconnect_timer.setInterval(1000);
-    event_timer.setInterval(30);
+    reconnect_timer.setInterval(500);
+    event_timer.setInterval(50);
 
     serial_port = nullptr;  // never forgetti mom's spaghetti
     buffer.clear();
@@ -1244,6 +1257,7 @@ void EurothermSerialClass::manageReply()
 
     if (serial_port->bytesAvailable() < 1)
     {
+        failed_attempts++;
         return;
     }
 
@@ -1762,6 +1776,8 @@ void EurothermSerialClass::manageReply()
         emit deviceConnected(serial_port->error(),no_reply);
     }
 
+    failed_attempts = 0;
+
     if (!request_queue.length())
     {
         return;
@@ -1777,9 +1793,20 @@ void EurothermSerialClass::processRequestQueue()
             static_cast<EurothermRequestStruct*>(request_queue[0]);
 
     QByteArray request_byte_array = generateModbusRequestString(*request);
-
     serial_port->flush();
-    serial_port->write(request_byte_array);
-    request->pending = true;
     buffer.clear();
+
+    if (serial_port->isWritable())
+    {
+        serial_port->write(request_byte_array);
+
+        if (serial_port->waitForBytesWritten())
+        {
+            request->pending = true;
+        }
+        else
+        {
+            serial_port->flush();
+        }
+    }
 }

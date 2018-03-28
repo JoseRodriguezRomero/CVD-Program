@@ -4,7 +4,7 @@
 
 #define MAX_QUEUE_LEN   20
 
-#define PFEIFFER_DEFAULT_PORT_NAME          "COM21"
+#define PFEIFFER_DEFAULT_PORT_NAME          "COM20"
 #define PFEIFFER_DEFAULT_PARITY             QSerialPort::NoParity
 #define PFEIFFER_DEFAULT_BAUD_RATE          QSerialPort::Baud9600
 #define PFEIFFER_DEFAULT_STOP_BITS          QSerialPort::OneStop
@@ -229,10 +229,10 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
 
     serial_port = nullptr;
 
-    reconnect_timer.setInterval(1000);
+    reconnect_timer.setInterval(500);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(20);
+    event_timer.setInterval(50);
     event_timer.setSingleShot(false);
 
     event_timer.setParent(this);
@@ -301,7 +301,7 @@ void PfeifferSerialclass::processRequestQueue()
     {
         serial_port->write(msg);
 
-        if (serial_port->waitForBytesWritten())
+        if (serial_port->waitForBytesWritten(500))
         {
             request->pending = true;
         }
@@ -782,6 +782,7 @@ void PfeifferSerialclass::manageReply()
 {
     if (serial_port->bytesAvailable() < 1)
     {
+        failed_attempts++;
         return;
     }
 
@@ -907,8 +908,14 @@ void PfeifferSerialclass::manageReply()
             if (valid_reply)
             {
                 delete request;
-                no_reply = false;
 
+                if (no_reply)
+                {
+                    no_reply = false;
+                    emit deviceConnected(serial_port->error(),no_reply);
+                }
+
+                failed_attempts = 0;
                 request_queue.remove(0);
                 if (request_queue.length() > 0)
                 {
