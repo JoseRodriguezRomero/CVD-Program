@@ -142,6 +142,7 @@ void BaseSerialClass::disconnectDevice()
     emit stopReconnectTimer();
     emit stopEventLoopTimer();
 
+    serial_port->clear();
     serial_port->close();
     serial_port->deleteLater();
     serial_port = nullptr;

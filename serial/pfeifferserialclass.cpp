@@ -232,7 +232,7 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
     reconnect_timer.setInterval(500);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(50);
+    event_timer.setInterval(30);
     event_timer.setSingleShot(false);
 
     event_timer.setParent(this);
@@ -295,6 +295,7 @@ void PfeifferSerialclass::processRequestQueue()
     msg.append('\n');
 
     buffer.clear();
+    serial_port->clear();
     serial_port->flush();
 
     if (serial_port->isWritable())
@@ -796,14 +797,6 @@ void PfeifferSerialclass::manageReply()
         return;
     }
 
-    for (int i = 1; i < buffer.length(); i++)
-    {
-        if ((buffer.at(i) == '\n') && (buffer.at(i-1) == '\r'))
-        {
-            buffer.remove(i+1,buffer.length()-i);
-        }
-    }
-
     if ((buffer.at(buffer.length()-2) != '\r') ||
             (buffer.at(buffer.length()-1) != '\n'))
     {
@@ -819,7 +812,7 @@ void PfeifferSerialclass::manageReply()
     {
         if (request->enquirying)
         {
-            bool valid_reply = true;
+            bool valid_reply = false;
 
             switch (request->mneumonic_id) {
             case BAU_ID:
@@ -926,6 +919,7 @@ void PfeifferSerialclass::manageReply()
             }
             else
             {
+                failed_attempts++;
                 request->pending = false;
                 request->enquirying = false;
             }
@@ -947,6 +941,7 @@ void PfeifferSerialclass::manageReply()
                     buffer.clear();
                     serial_port->flush();
                     serial_port->write(enq);
+                    failed_attempts++;
 
                     if (serial_port->waitForBytesWritten())
                     {

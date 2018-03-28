@@ -143,7 +143,7 @@ MainWindow::MainWindow(QWidget *parent) :
     serial_thread.start();
     serial_thread.setPriority(QThread::HighestPriority);
 
-    global_timer.setInterval(3000);
+    global_timer.setInterval(2000);
     global_timer.setSingleShot(false);
 }
 

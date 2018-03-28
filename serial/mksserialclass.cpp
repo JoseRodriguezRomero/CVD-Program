@@ -189,7 +189,7 @@ MKSSerialClass::MKSSerialClass(QObject *parent)
     reconnect_timer.setInterval(500);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(50);
+    event_timer.setInterval(30);
     event_timer.setSingleShot(false);
 
     reconnect_timer.setParent(this);
@@ -396,8 +396,11 @@ void MKSSerialClass::manageReply()
     delete request;
     request_queue.removeFirst();
 
-    request = static_cast<MKSRequestStruct*>(request_queue.first());
-    request->pending = false;
+    if (request_queue.length() > 0)
+    {
+        request = static_cast<MKSRequestStruct*>(request_queue.first());
+        request->pending = false;
+    }
 }
 
 void MKSSerialClass::processRequestQueue()
@@ -413,17 +416,12 @@ void MKSSerialClass::processRequestQueue()
     QByteArray msg;
     msg.clear();
 
-    msg.append('?');
-
-    if (request->write_request)
-    {
-        msg.append('!');
-    }
-
+    QByteArray mneumonic;
     for (int i = 0; i < request->mneumonic.length(); i++)
     {
-        msg.append(request->mneumonic.at(i).toLatin1());
+        mneumonic.append(request->mneumonic.at(i).toLatin1());
     }
+    msg.append(mneumonic);
 
     for (int i = 0; i < request->args.length(); i++)
     {
@@ -436,8 +434,25 @@ void MKSSerialClass::processRequestQueue()
         }
     }
 
+    if (request->write_request)
+    {
+        QByteArray aux_msg;
+        aux_msg.append('!');
+        aux_msg.append(msg);
+        aux_msg.append('\r');
+    }
+    else
+    {
+        QByteArray aux_msg;
+        aux_msg.append('?');
+        aux_msg.append(msg);
+        aux_msg.append('\r');
+        msg = aux_msg;
+    }
+
     msg.append('\r');
     buffer.clear();
+    serial_port->clear();
     serial_port->flush();
 
     if (serial_port->isWritable())
@@ -625,7 +640,7 @@ void MKSSerialClass::requestWriteSetpoint(const MKSSerialClass::Channel channel,
                                           float setpoint)
 {
     QVector<QString> args;
-    args.append(QString::number(setpoint,'f',2));
+    args.append(QString::number(setpoint,'f',3));
 
     addWriteRequestToQueue(request_queue,SP_ID,SP,channel,args);
 }

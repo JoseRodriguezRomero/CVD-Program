@@ -522,7 +522,9 @@ void castByteArrayToUnsigned16BitArray(const QByteArray data,
         return;
     }
 
-    for (int i = 0; i < data.length(); i++)
+    int len = (data.length() >> 1);
+
+    for (int i = 0; i < len; i++)
     {
         double_byte = data.at(i*2);
         double_byte = ((double_byte << 8) | (data.at(i*2+1)));
@@ -769,7 +771,7 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     event_timer.setParent(this);
 
     reconnect_timer.setInterval(500);
-    event_timer.setInterval(50);
+    event_timer.setInterval(30);
 
     serial_port = nullptr;  // never forgetti mom's spaghetti
     buffer.clear();
@@ -1034,9 +1036,6 @@ void EurothermSerialClass::requestWriteTargetSetpoint(
 {
     addFloatRequestToQueue(request_queue,server_address,TG_SP,HoldingRegister,
                            WriteRequest,setpoint);
-
-    EurothermRequestStruct *request = static_cast<EurothermRequestStruct*>(
-                request_queue.last());
 }
 
 void EurothermSerialClass::requestWriteProportionalBand(
@@ -1793,6 +1792,8 @@ void EurothermSerialClass::processRequestQueue()
             static_cast<EurothermRequestStruct*>(request_queue[0]);
 
     QByteArray request_byte_array = generateModbusRequestString(*request);
+
+    serial_port->clear();
     serial_port->flush();
     buffer.clear();
 
