@@ -117,6 +117,8 @@ MainWindow::MainWindow(QWidget *parent) :
             eurotherm_serial,SLOT(requestReadTargetSetpoint(int)));
     connect(this,SIGNAL(readSetpointRateLimitValue(int)),
             eurotherm_serial,SLOT(requestReadSetpointRateLimitValue(int)));
+    connect(this,SIGNAL(setMFCRemoteMode(MKSSerialClass::RemoteMode)),
+            mks_serial,SLOT(requestWriteRemoteMode(MKSSerialClass::RemoteMode)));
 
     connect(this,SIGNAL(readPressureAndStatus(PfeifferSerialclass::Sensor)),
             pfeiffer_serial,SLOT(requestReadStatusAndPressure(PfeifferSerialclass::Sensor)));
@@ -174,6 +176,7 @@ void MainWindow::initializeSerialDevices()
     emit startEurothermEventLoop();
     emit startPfeifferEventLoop();
     emit startMKSEventLoop();
+
     global_timer.start();
 }
 
@@ -294,9 +297,11 @@ void MainWindow::openSerialSettingsWindow()
 
     device_id.append(SerialSettingsWindow::Eurotherm);
     device_id.append(SerialSettingsWindow::Pfeiffer);
+    device_id.append(SerialSettingsWindow::MKS);
 
     devices.append(eurotherm_serial);
     devices.append(pfeiffer_serial);
+    devices.append(mks_serial);
 
     serial_settings_window.refresh();
 
@@ -331,7 +336,7 @@ void MainWindow::eventLoop()
     emit readMFCSetpoint(MKSSerialClass::Channel1);
     emit readMFCActualValue(MKSSerialClass::Channel1);
 
-    emit readPressureAndStatus(PfeifferSerialclass::Sensor6);
+    emit readPressureAndStatus(PfeifferSerialclass::Sensor1);
 }
 
 void MainWindow::onRecipePaused(bool recipe_paused)

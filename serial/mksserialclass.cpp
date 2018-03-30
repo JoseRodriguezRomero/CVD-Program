@@ -588,9 +588,11 @@ void MKSSerialClass::requestWriteRemoteMode(
     switch (mode) {
     case RemoteModeOn:
         args.append("ON");
+        qDebug() << "Remote on";
         break;
     case RemoteModeOff:
         args.append("OFF");
+        qDebug() << "Remote off";
         break;
     default:
         return;

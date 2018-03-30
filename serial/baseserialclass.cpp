@@ -1,4 +1,4 @@
-#define MAX_FAILED_ATTEMPTS         5
+#define MAX_FAILED_ATTEMPTS         6
 
 #include <QDebug>
 
@@ -274,9 +274,14 @@ void BaseSerialClass::eventLoop()
 
     if (failed_attempts >= MAX_FAILED_ATTEMPTS)
     {
+        qDebug() << "max attemps!";
         no_reply = true;
 
+        buffer.clear();
         failed_attempts = 0;
+        serial_port->clear();
+
+        clearRequestQueue();
         disconnectDevice();
 
         emit startReconnectTimer();

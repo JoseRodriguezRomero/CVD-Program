@@ -771,7 +771,7 @@ EurothermSerialClass::EurothermSerialClass(QObject *parent)
     event_timer.setParent(this);
 
     reconnect_timer.setInterval(500);
-    event_timer.setInterval(30);
+    event_timer.setInterval(50);
 
     serial_port = nullptr;  // never forgetti mom's spaghetti
     buffer.clear();
