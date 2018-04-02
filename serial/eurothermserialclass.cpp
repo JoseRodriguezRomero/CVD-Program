@@ -1,10 +1,8 @@
 #include "eurothermserialclass.h"
 
-#include <QDebug>
-
 #define MAX_QUEUE_LEN           20
 
-#define EUROTHERM_DEFAULT_PORT_NAME         "COM17"
+#define EUROTHERM_DEFAULT_PORT_NAME         "COM3"
 #define EUROTHERM_DEFAULT_PARITY            QSerialPort::NoParity
 #define EUROTHERM_DEFAULT_BAUD_RATE         QSerialPort::Baud19200
 #define EUROTHERM_DEFAULT_STOP_BITS         QSerialPort::OneStop

@@ -1,7 +1,5 @@
 #define MAX_FAILED_ATTEMPTS         6
 
-#include <QDebug>
-
 #include "baseserialclass.h"
 
 void BaseSerialClass::setEventTimeInterval(const uint interval)
@@ -202,8 +200,15 @@ bool BaseSerialClass::checkState()
 
 void BaseSerialClass::clearRequestQueue()
 {
+    if (!request_queue.length())
+    {
+        return;
+    }
+
+    int i = (processPending() ? 1 : 0);
+
     int len = request_queue.length();
-    for (int i = 0; i < len; i++)
+    for (; i < len; i++)
     {
         delete request_queue.at(i);
     }
@@ -274,7 +279,6 @@ void BaseSerialClass::eventLoop()
 
     if (failed_attempts >= MAX_FAILED_ATTEMPTS)
     {
-        qDebug() << "max attemps!";
         no_reply = true;
 
         buffer.clear();

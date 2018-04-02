@@ -6,6 +6,7 @@ int main(int argc, char *argv[])
     qRegisterMetaType<PfeifferSerialclass::Sensor>("PfeifferSerialclass::Sensor");
     qRegisterMetaType<PfeifferSerialclass::PressureMeasurementStatus>("PfeifferSerialclass::PressureMeasurementStatus");
 
+    qRegisterMetaType<MKSSerialClass::Key>("MKSSerialClass::Key");
     qRegisterMetaType<MKSSerialClass::Channel>("MKSSerialClass::Channel");
     qRegisterMetaType<MKSSerialClass::RemoteMode>("MKSSerialClass::RemoteMode");
 

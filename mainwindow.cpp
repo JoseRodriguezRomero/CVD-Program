@@ -1,7 +1,5 @@
 #include "mainwindow.h"
 
-#include <QDebug>
-
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     eurotherm_status_string("Eurotherm",this),
@@ -46,7 +44,7 @@ MainWindow::MainWindow(QWidget *parent) :
     pfeiffer_serial = new PfeifferSerialclass(nullptr);
     mks_serial = new MKSSerialClass(nullptr);
 
-    connect(exit,SIGNAL(clicked(bool)),this,SLOT(close()));
+    connect(exit,SIGNAL(released()),this,SLOT(close()));
     connect(serial_settings,SIGNAL(clicked(bool)),this,SLOT(openSerialSettingsWindow()));
 
     connect(&global_timer,SIGNAL(timeout()),this,SLOT(eventLoop()));
@@ -81,6 +79,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(&serial_settings_window,SIGNAL(resetDevice(SerialSettingsWindow::Device)),
             this,SLOT(resetConnection(SerialSettingsWindow::Device)));
 
+    connect(this,SIGNAL(clearRequestQueues()),eurotherm_serial,SLOT(clearRequestQueue()));
     connect(this,SIGNAL(startEurothermEventLoop()),eurotherm_serial,SLOT(startEventLoop()));
     connect(this,SIGNAL(deleteEurothermSerialClass()),eurotherm_serial,SLOT(deleteLater()));
     connect(this,SIGNAL(connectEurothermSerialPort()),eurotherm_serial,SLOT(connectDevice()));
@@ -91,6 +90,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(setEurothermPortBaudRate(QSerialPort::BaudRate)),eurotherm_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
     connect(this,SIGNAL(setEurothermPortParity(QSerialPort::Parity)),eurotherm_serial,SLOT(setParity(QSerialPort::Parity)));
 
+    connect(this,SIGNAL(clearRequestQueues()),pfeiffer_serial,SLOT(clearRequestQueue()));
     connect(this,SIGNAL(startPfeifferEventLoop()),pfeiffer_serial,SLOT(startEventLoop()));
     connect(this,SIGNAL(deletePfeifferSerialClass()),pfeiffer_serial,SLOT(deleteLater()));
     connect(this,SIGNAL(connectPfeifferSerialPort()),pfeiffer_serial,SLOT(connectDevice()));
@@ -101,6 +101,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(setPfeifferPortBaudRate(QSerialPort::BaudRate)),pfeiffer_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
     connect(this,SIGNAL(setPfeifferPortParity(QSerialPort::Parity)),pfeiffer_serial,SLOT(setParity(QSerialPort::Parity)));
 
+    connect(this,SIGNAL(clearRequestQueues()),mks_serial,SLOT(clearRequestQueue()));
     connect(this,SIGNAL(startMKSEventLoop()),mks_serial,SLOT(startEventLoop()));
     connect(this,SIGNAL(deleteMKSSerialClass()),mks_serial,SLOT(deleteLater()));
     connect(this,SIGNAL(connectMKSSerialPort()),mks_serial,SLOT(connectDevice()));
@@ -111,25 +112,22 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this,SIGNAL(setMKSPortBaudRate(QSerialPort::BaudRate)),mks_serial,SLOT(setBaudRate(QSerialPort::BaudRate)));
     connect(this,SIGNAL(setMKSPortParity(QSerialPort::Parity)),mks_serial,SLOT(setParity(QSerialPort::Parity)));
 
-    connect(this,SIGNAL(readPVInputValue(int)),
+    connect(this,SIGNAL(readEurothermPVInputValue(int)),
             eurotherm_serial,SLOT(requestReadPVInputValue(int)));
-    connect(this,SIGNAL(readTargetSetpoint(int)),
+    connect(this,SIGNAL(readEurothermTargetSetpoint(int)),
             eurotherm_serial,SLOT(requestReadTargetSetpoint(int)));
-    connect(this,SIGNAL(readSetpointRateLimitValue(int)),
+    connect(this,SIGNAL(readEurothermSetpointRateLimitValue(int)),
             eurotherm_serial,SLOT(requestReadSetpointRateLimitValue(int)));
-    connect(this,SIGNAL(setMFCRemoteMode(MKSSerialClass::RemoteMode)),
-            mks_serial,SLOT(requestWriteRemoteMode(MKSSerialClass::RemoteMode)));
 
     connect(this,SIGNAL(readPressureAndStatus(PfeifferSerialclass::Sensor)),
             pfeiffer_serial,SLOT(requestReadStatusAndPressure(PfeifferSerialclass::Sensor)));
 
     connect(this,SIGNAL(readMFCSetpoint(MKSSerialClass::Channel)),
             mks_serial,SLOT(requestReadSetpoint(MKSSerialClass::Channel)));
-
     connect(this,SIGNAL(readMFCActualValue(MKSSerialClass::Channel)),
-            mks_serial,SLOT(requestReadAccessChannel(MKSSerialClass::Channel)));
-    connect(this,SIGNAL(readMFCSetpoint(MKSSerialClass::Channel)),
-            mks_serial,SLOT(requestReadSetpoint(MKSSerialClass::Channel)));
+            mks_serial,SLOT(requestReadActualValue(MKSSerialClass::Channel)));
+    connect(this,SIGNAL(readMFCValve(MKSSerialClass::Channel)),
+            mks_serial,SLOT(requestReadValve(MKSSerialClass::Channel)));
 
     manual_control_page.setEurothermSerialClasss(eurotherm_serial);
     manual_control_page.setPfeifferSerialClass(pfeiffer_serial);
@@ -151,6 +149,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    emit clearRequestQueues();
+
     emit disconnectEurothermSerialPort();
     emit disconnectPfeifferSerialPort();
     emit disconnectMKSSerialPort();
@@ -161,7 +161,7 @@ MainWindow::~MainWindow()
 
     QTime delete_timer;
     delete_timer.start();
-    while (delete_timer.elapsed() < 500)
+    while (delete_timer.elapsed() < 1000)
     {
     }
 
@@ -327,12 +327,12 @@ void MainWindow::eventLoop()
 {
     for (int i = 0; i < 3; i++)
     {
-        emit readPVInputValue(i+1);
-        emit readTargetSetpoint(i+1);
-        emit readSetpointRateLimitValue(i+1);
+        emit readEurothermPVInputValue(i+1);
+        emit readEurothermTargetSetpoint(i+1);
+        emit readEurothermSetpointRateLimitValue(i+1);
     }
 
-    emit readMFCStatus(MKSSerialClass::Channel1);
+    emit readMFCValve(MKSSerialClass::Channel1);
     emit readMFCSetpoint(MKSSerialClass::Channel1);
     emit readMFCActualValue(MKSSerialClass::Channel1);
 

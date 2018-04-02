@@ -71,16 +71,20 @@ private slots:
     void onRecipeStarted(bool recipe_stopped);
 
 signals:
+    void clearRequestQueues();
+
     void readPressureAndStatus(const PfeifferSerialclass::Sensor sensor);
 
     void readMFCStatus(const MKSSerialClass::Channel channel);
     void readMFCActualValue(const MKSSerialClass::Channel channel);
+    void readMFCValve(const MKSSerialClass::Channel channel);
     void readMFCSetpoint(const MKSSerialClass::Channel channel);
-    void setMFCRemoteMode(const MKSSerialClass::RemoteMode remote);
 
-    void readPVInputValue(const int server_address);
-    void readTargetSetpoint(const int server_address);
-    void readSetpointRateLimitValue(const int server_address);
+    void readEurothermPVInputValue(const int server_address);
+    void readEurothermTargetSetpoint(const int server_address);
+    void readEurothermSetpointRateLimitValue(const int server_address);
+    void setEurothermTargetSetpoint(const int server_address,
+                                    const float setpoint);
 
     void setEurothermPortName(const QString &name);
     void setEurothermPortParity(const QSerialPort::Parity parity);

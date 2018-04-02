@@ -1,12 +1,10 @@
 #include "mksserialclass.h"
 
-#include <QDebug>
-
 #define MAX_QUEUE_LEN   20
 
-#define MKS_DEFAULT_PORT_NAME           "COM18"
+#define MKS_DEFAULT_PORT_NAME           "COM4"
 #define MKS_DEFAULT_PARITY              QSerialPort::NoParity
-#define MKS_DEFAULT_BAUD_RATE           QSerialPort::Baud9600
+#define MKS_DEFAULT_BAUD_RATE           QSerialPort::Baud19200
 #define MKS_DEFAULT_STOP_BITS           QSerialPort::OneStop
 #define MKS_DEFAULT_DATA_BITS           QSerialPort::Data8
 #define MKS_DEFAULT_FLOW_CONTROL        QSerialPort::NoFlowControl
@@ -186,10 +184,10 @@ MKSSerialClass::MKSSerialClass(QObject *parent)
 {
     this->setParent(parent);
 
-    reconnect_timer.setInterval(500);
+    reconnect_timer.setInterval(1000);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(30);
+    event_timer.setInterval(80);
     event_timer.setSingleShot(false);
 
     reconnect_timer.setParent(this);
@@ -222,6 +220,11 @@ MKSSerialClass::~MKSSerialClass()
 
 bool MKSSerialClass::processPending() const
 {
+    if (!request_queue.length())
+    {
+        return false;
+    }
+
     MKSRequestStruct *request = static_cast<MKSRequestStruct*>(
                 request_queue.first());
 
@@ -240,6 +243,26 @@ void MKSSerialClass::manageReply()
                 request_queue.first());
 
     buffer.append(serial_port->readAll());
+
+    if (buffer.length() == 1 && buffer.at(0) == '\r')
+    {
+        buffer.clear();
+        failed_attempts = 0;
+        return;
+    }
+
+    if (buffer.length() > 3)
+    {
+        if (buffer.at(0) == ' ')
+        {
+            buffer.remove(0,1);
+        }
+
+        if (buffer.at(buffer.length()-2) == ' ')
+        {
+            buffer.remove(buffer.length()-2,1);
+        }
+    }
 
     if (buffer.at(buffer.length()-1) != '\r')
     {
@@ -308,10 +331,13 @@ void MKSSerialClass::manageReply()
         valid_reply = manageSetpointReply(args);
         break;
     case EX_ID:
+        valid_reply = manageExternalInputReply(args);
         break;
     case ST_ID:
+        valid_reply = manageStatusReply(args);
         break;
     case VL_ID:
+        valid_reply = manageValvesReply(args);
         break;
     case RL_ID:
         break;
@@ -380,7 +406,15 @@ void MKSSerialClass::manageReply()
 
     if (!valid_reply)
     {
+        if (buffer.at(0) == '\r' && buffer.length() == 1)
+        {
+            buffer.clear();
+            return;
+        }
+
         request->pending = false;
+        buffer.clear();
+        serial_port->clear();
         return;
     }
 
@@ -437,16 +471,14 @@ void MKSSerialClass::processRequestQueue()
     if (request->write_request)
     {
         QByteArray aux_msg;
-        aux_msg.append('!');
         aux_msg.append(msg);
-        aux_msg.append('\r');
+        msg = aux_msg;
     }
     else
     {
         QByteArray aux_msg;
         aux_msg.append('?');
         aux_msg.append(msg);
-        aux_msg.append('\r');
         msg = aux_msg;
     }
 
@@ -510,6 +542,22 @@ void MKSSerialClass::requestReadActualValue(
 void MKSSerialClass::requestReadSetpoint(const MKSSerialClass::Channel channel)
 {
     addReadRequestToQueue(request_queue,SP_ID,SP,channel);
+}
+
+void MKSSerialClass::requestReadExternalInput(
+        const MKSSerialClass::Channel channel)
+{
+    addReadRequestToQueue(request_queue,EX_ID,EX,channel);
+}
+
+void MKSSerialClass::requestReadStatus()
+{
+    addReadRequestToQueue(request_queue,ST_ID,ST,NoChannel);
+}
+
+void MKSSerialClass::requestReadValve(const MKSSerialClass::Channel channel)
+{
+    addReadRequestToQueue(request_queue,VL_ID,VL,channel);
 }
 
 void MKSSerialClass::requestWriteDisplayText(const QString &text)
@@ -588,11 +636,9 @@ void MKSSerialClass::requestWriteRemoteMode(
     switch (mode) {
     case RemoteModeOn:
         args.append("ON");
-        qDebug() << "Remote on";
         break;
     case RemoteModeOff:
         args.append("OFF");
-        qDebug() << "Remote off";
         break;
     default:
         return;
@@ -642,9 +688,26 @@ void MKSSerialClass::requestWriteSetpoint(const MKSSerialClass::Channel channel,
                                           float setpoint)
 {
     QVector<QString> args;
-    args.append(QString::number(setpoint,'f',3));
+    args.append(QString::number(setpoint,'f',2));
 
     addWriteRequestToQueue(request_queue,SP_ID,SP,channel,args);
+}
+
+void MKSSerialClass::requestWriteValve(const MKSSerialClass::Channel channel,
+                                       const bool valve_open)
+{
+    QVector<QString> args;
+
+    switch (valve_open) {
+    case true:
+        args.append("ON");
+        break;
+    default:
+        args.append("OFF");
+        break;
+    }
+
+    addWriteRequestToQueue(request_queue,VL_ID,VL,channel,args);
 }
 
 MKSSerialClass::Channel MKSSerialClass::channelQueryed() const
@@ -926,5 +989,90 @@ bool MKSSerialClass::manageSetpointReply(const QVector<QString> &args)
     }
 
     emit setpoint(channelQueryed(),float_cast);
+    return true;
+}
+
+bool MKSSerialClass::manageExternalInputReply(const QVector<QString> &args)
+{
+    if (args.length() != 1)
+    {
+        return false;
+    }
+
+    bool float_casted;
+    float float_cast = args.at(0).toFloat(&float_casted);
+
+    if (!float_casted)
+    {
+        return false;
+    }
+
+    emit externalInput(channelQueryed(),float_cast);
+    return true;
+}
+
+bool MKSSerialClass::manageStatusReply(const QVector<QString> &args)
+{
+    if (args.length() != 1)
+    {
+        return false;
+    }
+
+    bool uint_casted;
+    unsigned int uint_cast = args.at(0).toUInt(&uint_casted);
+
+    if (!uint_casted)
+    {
+        return false;
+    }
+
+    Status statuses[8];
+    statuses[0] = CommuncationErrorStatus;
+    statuses[1] = UnderrangeAIN0Status;
+    statuses[2] = OverrangeAIN0Status;
+    statuses[3] = UnderrangeAIN1Status;
+    statuses[4] = OverrangeAIN1Status;
+    statuses[5] = Relay0Status;
+    statuses[6] = Relay1Status;
+    statuses[7] = ParamChangeStatus;
+
+    if (uint_cast)
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            if (uint_cast & (1 << i))
+            {
+                emit status(statuses[i]);
+            }
+        }
+    }
+    else
+    {
+        emit status(NoError);
+    }
+
+    return true;
+}
+
+bool MKSSerialClass::manageValvesReply(const QVector<QString> &args)
+{
+    if (args.length() != 1)
+    {
+        return false;
+    }
+
+    if (args.first() == "ON")
+    {
+        emit valve(channelQueryed(),true);
+    }
+    else if (args.first() == "OFF")
+    {
+        emit valve(channelQueryed(),false);
+    }
+    else
+    {
+        return false;
+    }
+
     return true;
 }

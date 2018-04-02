@@ -9,6 +9,7 @@
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QDoubleSpinBox>
 
 #include "serial/eurothermserialclass.h"
@@ -32,8 +33,9 @@ private:
     QDoubleSpinBox temp_ramp_right;
 
     QLineEdit mfc_flow;
-    QLineEdit mfc_status;
+    QPushButton mfc_open_close_valve;
     QDoubleSpinBox mfc_setpoint;
+    bool mfc_valve_open;
 
     QLineEdit gauge_pressure;
     QLineEdit gauge_sensor;
@@ -57,6 +59,9 @@ signals:
 
     void writeMFCSetpoint(const MKSSerialClass::Channel channel,
                           const float setpoint);
+    void setMFCKey(const MKSSerialClass::Key key);
+    void setMFCValve(const MKSSerialClass::Channel channel,
+                     const bool valve_open);
 
 public slots:
     void setMeasuredTemperature(const int server_address,
@@ -75,6 +80,8 @@ public slots:
                              const float actual_value);
     void setMassFlowSetpoint(const MKSSerialClass::Channel channel,
                              const float setpoint);
+    void setMFCValveStatus(const MKSSerialClass::Channel channel,
+                           const bool valve_open);
 
     void setBlockedCommands(bool block);
     void setUnBlockedCommands(bool unblock);
@@ -83,6 +90,7 @@ public slots:
     void requestSetTemperatureRamp();
 
     void requestSetMassFlowSetpoint();
+    void requestMFCValve();
 };
 
 #endif // MANUALCONTROLPAGE_H

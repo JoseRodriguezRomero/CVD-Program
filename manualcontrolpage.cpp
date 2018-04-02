@@ -1,6 +1,5 @@
 #define LABEL_ALIGMENT      Qt::AlignHCenter| Qt::AlignVCenter
 
-#include <QDebug>
 #include "manualcontrolpage.h"
 
 ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
@@ -157,20 +156,15 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
     mfc_flow.setDisabled(true);
     mks_gbox_layout->addWidget(&mfc_flow,0,1,1,1);
 
-    QLabel *mks_label2 = new QLabel(this);
-    mks_label2->setText("MFC Status");
-    mks_label2->setAlignment(LABEL_ALIGMENT);
-    mks_gbox_layout->addWidget(mks_label2,1,0,1,1);
-
-    mfc_status.setDisabled(true);
-    mks_gbox_layout->addWidget(&mfc_status,1,1,1,1);
-
     QLabel *mks_label3 = new QLabel(this);
     mks_label3->setText("Mass Flow\nSetpoint [sccm]");
     mks_label3->setAlignment(LABEL_ALIGMENT);
-    mks_gbox_layout->addWidget(mks_label3,2,0,1,1);
+    mks_gbox_layout->addWidget(mks_label3,1,0,1,1);
 
-    mks_gbox_layout->addWidget(&mfc_setpoint,2,1,1,1);
+    mks_gbox_layout->addWidget(&mfc_setpoint,1,1,1,1);
+
+    mfc_open_close_valve.setText("Valve is closed!");
+    mks_gbox_layout->addWidget(&mfc_open_close_valve,2,0,1,2);
 
     pfeiffer_gbox->setLayout(new QGridLayout(pfeiffer_gbox));
     QGridLayout *pfeiffer_gbox_layout =
@@ -210,8 +204,12 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
     temp_setpoint_right.setMaximum(2000);
     temp_setpoint_right.setMinimum(0);
 
+    mfc_setpoint.setMaximum(100);
+    mfc_setpoint.setMinimum(0);
+
     eurotherm_serial = nullptr;
     pfeiffer_serial = nullptr;
+    mks_serial = nullptr;
 
     connect(&temp_setpoint_left,SIGNAL(editingFinished()),
             this,SLOT(requestSetTemperatureSetpoint()));
@@ -229,6 +227,9 @@ ManualControlPage::ManualControlPage(QWidget *parent) : QWidget(parent)
 
     connect(&mfc_setpoint,SIGNAL(editingFinished()),
             this,SLOT(requestSetMassFlowSetpoint()));
+
+    connect(&mfc_open_close_valve,SIGNAL(clicked(bool)),
+            this,SLOT(requestMFCValve()));
 }
 
 void ManualControlPage::setEurothermSerialClasss(
@@ -285,9 +286,14 @@ void ManualControlPage::setMKSSerialClass(MKSSerialClass *mks_serial)
                    this,SLOT(setMassFlowSetpoint(MKSSerialClass::Channel,float)));
         disconnect(mks_serial,SIGNAL(actualValue(MKSSerialClass::Channel,float)),
                    this,SLOT(setMeasuredMassFlow(MKSSerialClass::Channel,float)));
+        disconnect(mks_serial,SIGNAL(valve(MKSSerialClass::Channel,bool)),
+                   this,SLOT(setMFCValveStatus(MKSSerialClass::Channel,bool)));
 
         disconnect(this,SIGNAL(writeMFCSetpoint(MKSSerialClass::Channel,float)),
                    mks_serial,SLOT(requestWriteSetpoint(MKSSerialClass::Channel,float)));
+
+        disconnect(this,SIGNAL(setMFCValve(MKSSerialClass::Channel,bool)),
+                   mks_serial,SLOT(requestWriteValve(MKSSerialClass::Channel,bool)));
     }
 
     connect(mks_serial,SIGNAL(setpoint(MKSSerialClass::Channel,float)),
@@ -296,8 +302,14 @@ void ManualControlPage::setMKSSerialClass(MKSSerialClass *mks_serial)
     connect(mks_serial,SIGNAL(actualValue(MKSSerialClass::Channel,float)),
             this,SLOT(setMeasuredMassFlow(MKSSerialClass::Channel,float)));
 
+    connect(mks_serial,SIGNAL(valve(MKSSerialClass::Channel,bool)),
+            this,SLOT(setMFCValveStatus(MKSSerialClass::Channel,bool)));
+
     connect(this,SIGNAL(writeMFCSetpoint(MKSSerialClass::Channel,float)),
             mks_serial,SLOT(requestWriteSetpoint(MKSSerialClass::Channel,float)));
+
+    connect(this,SIGNAL(setMFCValve(MKSSerialClass::Channel,bool)),
+            mks_serial,SLOT(requestWriteValve(MKSSerialClass::Channel,bool)));
 }
 
 void ManualControlPage::setMeasuredTemperature(const int server_address,
@@ -450,6 +462,21 @@ void ManualControlPage::setMassFlowSetpoint(
     mfc_setpoint.setValue(setpoint);
 }
 
+void ManualControlPage::setMFCValveStatus(const MKSSerialClass::Channel channel,
+                                          const bool valve_open)
+{
+    switch (valve_open) {
+    case true:
+        mfc_valve_open = true;
+        mfc_open_close_valve.setText("Valve is open!");
+        break;
+    default:
+        mfc_valve_open = false;
+        mfc_open_close_valve.setText("Valve is closed!");
+        break;
+    }
+}
+
 void ManualControlPage::setBlockedCommands(bool block)
 {
     temp_setpoint_left.setDisabled(block);
@@ -540,4 +567,18 @@ void ManualControlPage::requestSetMassFlowSetpoint()
 
     sender_widget->clearFocus();
     emit writeMFCSetpoint(MKSSerialClass::Channel1,sender_widget->value());
+
+    if (sender_widget->value() == 0.0)
+    {
+        emit setMFCKey(MKSSerialClass::OnKey);
+    }
+    else
+    {
+        emit setMFCKey(MKSSerialClass::OffKey);
+    }
+}
+
+void ManualControlPage::requestMFCValve()
+{
+    emit setMFCValve(MKSSerialClass::Channel1,!mfc_valve_open);
 }

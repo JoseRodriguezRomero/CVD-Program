@@ -1,10 +1,8 @@
 #include "pfeifferserialclass.h"
 
-#include <QDebug>
-
 #define MAX_QUEUE_LEN   20
 
-#define PFEIFFER_DEFAULT_PORT_NAME          "COM20"
+#define PFEIFFER_DEFAULT_PORT_NAME          "COM6"
 #define PFEIFFER_DEFAULT_PARITY             QSerialPort::NoParity
 #define PFEIFFER_DEFAULT_BAUD_RATE          QSerialPort::Baud9600
 #define PFEIFFER_DEFAULT_STOP_BITS          QSerialPort::OneStop
@@ -232,7 +230,7 @@ PfeifferSerialclass::PfeifferSerialclass(QObject *parent)
     reconnect_timer.setInterval(500);
     reconnect_timer.setSingleShot(false);
 
-    event_timer.setInterval(30);
+    event_timer.setInterval(50);
     event_timer.setSingleShot(false);
 
     event_timer.setParent(this);

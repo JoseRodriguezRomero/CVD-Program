@@ -72,6 +72,18 @@ public:
         RemoteModeOff
     };
 
+    enum Status {
+        CommuncationErrorStatus     = 0,
+        UnderrangeAIN0Status        = 1,
+        OverrangeAIN0Status         = 2,
+        UnderrangeAIN1Status        = 3,
+        OverrangeAIN1Status         = 4,
+        Relay0Status                = 5,
+        Relay1Status                = 6,
+        ParamChangeStatus           = 7,
+        NoError                     = 8
+    };
+
 public:
     explicit MKSSerialClass(QObject *parent = nullptr);
     ~MKSSerialClass();    
@@ -90,6 +102,9 @@ public slots:
     void requestReadAccessChannel(const MKSSerialClass::Channel channel);
     void requestReadActualValue(const MKSSerialClass::Channel channel);
     void requestReadSetpoint(const MKSSerialClass::Channel channel);
+    void requestReadExternalInput(const MKSSerialClass::Channel channel);
+    void requestReadStatus();
+    void requestReadValve(const MKSSerialClass::Channel channel);
 
     void requestWriteDisplayText(const QString &text);
     void requestWriteDisplayDialog(const MKSSerialClass::DisplayDialog dialog);
@@ -102,6 +117,8 @@ public slots:
                                  float setpoint);
     void requestWriteSetpoint(const MKSSerialClass::Channel channel,
                               float setpoint);
+    void requestWriteValve(const MKSSerialClass::Channel channel,
+                           const bool valve_open);
 
 signals:
     void errorMessage(const ErrorMessage error_message);
@@ -115,6 +132,8 @@ signals:
     void actualValue(const MKSSerialClass::Channel channel, const float value);
     void setpoint(const MKSSerialClass::Channel channel, const float setpoint);
     void valve(const MKSSerialClass::Channel channel, const bool valve_open);
+    void externalInput(const MKSSerialClass::Channel channel, const float value);
+    void status(const Status status);
 
 private:
     Channel channelQueryed() const;
@@ -128,6 +147,9 @@ private:
     bool manageAccessChannelReply(const QVector<QString> &args);
     bool manageActualValueReply(const QVector<QString> &args);
     bool manageSetpointReply(const QVector<QString> &args);
+    bool manageExternalInputReply(const QVector<QString> &args);
+    bool manageStatusReply(const QVector<QString> &args);
+    bool manageValvesReply(const QVector<QString> &args);
 };
 
 #endif // MKSSERIALCLASS_H
